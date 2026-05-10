@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import {
   CartesianGrid,
   ResponsiveContainer,
@@ -13,6 +12,7 @@ import {
 
 import type { VolumePoint } from "@/lib/mock-demo-data";
 import { mockVolumeSeries } from "@/lib/mock-demo-data";
+import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import { cn } from "@/lib/utils";
 
 const money = new Intl.NumberFormat("es-ES", {
@@ -20,22 +20,6 @@ const money = new Intl.NumberFormat("es-ES", {
   currency: "USD",
   maximumFractionDigits: 0,
 });
-
-function subscribeReducedMotion(onStoreChange: () => void) {
-  if (typeof window === "undefined") return () => {};
-  const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-  mq.addEventListener("change", onStoreChange);
-  return () => mq.removeEventListener("change", onStoreChange);
-}
-
-function getReducedMotionSnapshot(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-function getReducedMotionServerSnapshot(): boolean {
-  return false;
-}
 
 export type VolumeChartProps = {
   data?: VolumePoint[];
@@ -46,11 +30,7 @@ export type VolumeChartProps = {
  * Serie USDT volumen demo — cuando exista indexer, sólo cambia la fuente de `data`.
  */
 export function VolumeChart({ data = mockVolumeSeries(), className }: VolumeChartProps) {
-  const reduceMotion = React.useSyncExternalStore(
-    subscribeReducedMotion,
-    getReducedMotionSnapshot,
-    getReducedMotionServerSnapshot,
-  );
+  const reduceMotion = usePrefersReducedMotion();
 
   return (
     <section
@@ -77,7 +57,7 @@ export function VolumeChart({ data = mockVolumeSeries(), className }: VolumeChar
         <ResponsiveContainer width="100%" height={300}>
           <AreaChart
             data={data}
-            accessibilityLayer={false}
+            accessibilityLayer
             margin={{ left: 4, right: 16, bottom: 0, top: 8 }}
           >
             <defs>

@@ -1,8 +1,13 @@
+import { privateKeyToAccount } from "viem/accounts";
 import {
   createPublicClient,
+  createWalletClient,
   defineChain,
+  getAddress,
   http,
+  isAddress,
   type PublicClient,
+  type WalletClient,
 } from "viem";
 
 /** Public RPC for opBNB mainnet — override via NEXT_PUBLIC_OPBNB_RPC_MAINNET. */
@@ -45,6 +50,62 @@ export const opBNBTestnet = defineChain({
     },
   },
 });
+
+/** Alias explícito del chain id testnet opBNB. */
+export const OPBNB_TESTNET_CHAIN_ID = opBNBTestnet.id;
+
+/**
+ * USDT “bridged” citado habitualmente para opBNB testnet.
+ * Confirmar antes de producción en testnet.opbnbscan.com o bnb-chain/opbnb-bridge-tokens.
+ */
+export const DEFAULT_USDT_ADDRESS_OPBNB_TESTNET =
+  "0xCF712f20c85421d00EAa1B6F6545AaEEb4492B75";
+
+/** Dirección USDT en opBNB testnet: env `NEXT_PUBLIC_USDT_ADDRESS_OPBNB_TESTNET` o valor por defecto documentado. */
+export function getUsdtAddressOpbnbTestnet(): `0x${string}` {
+  const raw = process.env.NEXT_PUBLIC_USDT_ADDRESS_OPBNB_TESTNET?.trim();
+  if (raw?.length && isAddress(raw)) {
+    return getAddress(raw);
+  }
+  return getAddress(DEFAULT_USDT_ADDRESS_OPBNB_TESTNET);
+}
+
+function normalizeAgentPrivateKey(secret: string): `0x${string}` {
+  const t = secret.trim();
+  if (!t.startsWith("0x")) return `0x${t}`;
+  return t as `0x${string}`;
+}
+
+/**
+ * Cuenta servidor para firmar en opBNB testnet. Requiere `AGENT_WALLET_PRIVATE_KEY`; nunca público (`NEXT_PUBLIC_`).
+ * Devuelve `null` si falta la variable o la clave es inválida.
+ */
+export function getAgentAccount() {
+  const pk = process.env.AGENT_WALLET_PRIVATE_KEY?.trim();
+  if (!pk?.length) return null;
+  try {
+    return privateKeyToAccount(normalizeAgentPrivateKey(pk));
+  } catch {
+    return null;
+  }
+}
+
+let cachedAgentWalletClient: WalletClient | null | undefined;
+
+/** Cliente de escritura opcional contra opBNB testnet usando la cuenta agente. */
+export function getAgentWalletClientOpbnbTestnet(): WalletClient | null {
+  if (cachedAgentWalletClient === undefined) {
+    const account = getAgentAccount();
+    cachedAgentWalletClient = account
+      ? createWalletClient({
+          account,
+          chain: opBNBTestnet,
+          transport: http(testnetHttpUrl(), { batch: true }),
+        })
+      : null;
+  }
+  return cachedAgentWalletClient;
+}
 
 const clientByChain = new Map<number, PublicClient>();
 

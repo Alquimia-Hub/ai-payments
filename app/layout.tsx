@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 
 import "./globals.css";
 
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/shell/app-shell";
 import { Web3Providers } from "@/components/providers/web3-providers";
 
@@ -38,7 +39,9 @@ export default function RootLayout({
     <html lang="es" className={`dark ${inter.variable}`} suppressHydrationWarning>
       <body className="min-h-svh touch-manipulation font-sans bg-background antialiased selection:bg-[#f0b90b]/30 selection:text-[#f4f6fa]">
         <Web3Providers>
-          <AppShell>{children}</AppShell>
+          <TooltipProvider delay={200}>
+            <AppShell>{children}</AppShell>
+          </TooltipProvider>
         </Web3Providers>
       </body>
     </html>

@@ -7,12 +7,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bot,
   ClipboardCopy,
   Home,
   LayoutDashboard,
   ListTree,
+  MessageSquare,
   Wallet,
-  Bot,
+  Workflow,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -152,6 +154,13 @@ export function AgentSidebar({ className, onNavigate }: AgentSidebarProps) {
             <SectionHeading label="Agentes" />
           </div>
           <SidebarLink
+            href="/agentes/chat"
+            label="Chat · USDT (agente)"
+            icon={MessageSquare}
+            exact
+            onNavigate={onNavigate}
+          />
+          <SidebarLink
             href="/agentes/a2a"
             label="A2A – Agent to Agent"
             icon={Bot}
@@ -167,6 +176,35 @@ export function AgentSidebar({ className, onNavigate }: AgentSidebarProps) {
             href="/agentes/a2c"
             label="A2C – Agent to Consumer"
             icon={Bot}
+            onNavigate={onNavigate}
+          />
+
+          <div className="mt-6">
+            <SectionHeading label="Workflows" />
+          </div>
+          <SidebarLink
+            href="/workflows"
+            label="Diagramas (índice)"
+            icon={Workflow}
+            exact
+            onNavigate={onNavigate}
+          />
+          <SidebarLink
+            href="/workflows/a2a"
+            label="A2A · diagrama"
+            icon={Workflow}
+            onNavigate={onNavigate}
+          />
+          <SidebarLink
+            href="/workflows/a2b"
+            label="A2B · diagrama"
+            icon={Workflow}
+            onNavigate={onNavigate}
+          />
+          <SidebarLink
+            href="/workflows/a2c"
+            label="A2C · diagrama"
+            icon={Workflow}
             onNavigate={onNavigate}
           />
 

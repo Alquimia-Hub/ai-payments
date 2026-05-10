@@ -68,7 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main
           id="contenido-principal"
-          className="relative flex flex-1 flex-col min-w-0 bg-background px-5 py-6 sm:px-8 sm:py-10"
+          className="relative flex scroll-mt-24 flex-1 flex-col min-w-0 bg-background px-5 py-6 sm:px-8 sm:py-10 md:scroll-mt-0"
           tabIndex={-1}
         >
           {children}
