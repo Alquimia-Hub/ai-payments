@@ -13,33 +13,23 @@ const EXAMPLE_PAYEE_ARG =
 export default function AgentA2BPage() {
   return (
     <AgentPaymentsChat
-      api="/api/agents/demo"
+      api="/api/agents/execute"
       scenario="a2b"
       title="A2B · Agent to Business"
-      lead={
-        <>
-          Liquida ante comerciantes, SaaS o proveedores: el agente puede abonar con
-          USDT manteniendo el flujo <strong>A2B</strong> de esta página.
-        </>
-      }
-      emptyState={{
-        title: "Agent → Business",
-        description:
-          "Stock bajo, suscripciones o compras estable con chips o tu propio escenario.",
-      }}
-      textareaPlaceholder="Ej.: el agente del marketplace debe pagar al proveedor en USDT…"
+      emptyState={{ title: "Agent → Business" }}
+      textareaPlaceholder="Ej.: el agente del marketplace debe pagar al proveedor en tBNB…"
       suggestions={[
         {
           label: "Mercado Libre / stock",
-          prompt: `Soy agente IA de cuenta marketplace: falta inventario SKU «mate premium». Verificá balance de tesorería ${EXAMPLE_PAYEE_ARG} con checkUSDTBalance y pagá 742 USDT al proveedor arg ${EXAMPLE_PAYEE_ARG}; flow A2B. Explica autonomía y compliance si lo piden.`,
+          prompt: `Soy agente IA de cuenta marketplace: falta inventario SKU «mate premium». Verificá balance de tesorería ${EXAMPLE_PAYEE_ARG} con checkTBnbBalance y pagá 0.0742 tBNB al proveedor arg ${EXAMPLE_PAYEE_ARG}; flow A2B. Explica autonomía y compliance si lo piden.`,
         },
         {
-          label: "Suscripción SaaS recurrente",
-          prompt: `Soy procurement: ejecutamos 249 USDT mensuales a ${EXAMPLE_PAYEE_ARG}; flow A2B.`,
+          label: "Procurement recurrente",
+          prompt: `Soy procurement: ejecutamos 0.0249 tBNB mensuales a ${EXAMPLE_PAYEE_ARG}; flow A2B.`,
         },
         {
-          label: "Stablecoin sin colas intermedias",
-          prompt: `Comercio necesita estable para stock: ejecutá 910 USDT a proveedor ${EXAMPLE_PAYEE_ARG} con menor fricción de intermediarios locales; narrá cómo automatiza el agente; flow A2B.`,
+          label: "Reposición proveedor",
+          prompt: `Comercio necesita abonar reposición: ejecutá 0.091 tBNB a proveedor ${EXAMPLE_PAYEE_ARG} con menor fricción de intermediarios locales; narrá cómo automatiza el agente; flow A2B.`,
         },
       ]}
     />

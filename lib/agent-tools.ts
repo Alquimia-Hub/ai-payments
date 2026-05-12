@@ -1,169 +1,179 @@
 import { tool } from "ai";
-import { getAddress, isAddress, parseUnits } from "viem";
+import { formatEther, getAddress, isAddress, parseEther } from "viem";
 import { z } from "zod";
 
-import { erc20Abi } from "@/lib/abis/erc20";
 import {
   exploreTxUrl,
   getAgentAccount,
+  getAgentPrivateKeyFormatHint,
   getAgentWalletClientOpbnbTestnet,
   getPublicClient,
-  getUsdtAddressOpbnbTestnet,
   opBNBTestnet,
   OPBNB_TESTNET_CHAIN_ID,
 } from "@/lib/opbnb";
 
-async function readUsdtDecimals(): Promise<number> {
-  const publicClient = getPublicClient(OPBNB_TESTNET_CHAIN_ID);
-  const token = getUsdtAddressOpbnbTestnet();
-  try {
-    const d = await publicClient.readContract({
-      address: token,
-      abi: erc20Abi,
-      functionName: "decimals",
-    });
-    return Number(d);
-  } catch {
-    return 18;
-  }
-}
+const NATIVE_DECIMALS = 18;
 
-function parseMaxHumanFromEnv(decimals: number): bigint | undefined {
-  const raw = process.env.AGENT_USDT_MAX_PER_TX?.trim();
+function parseMaxTbnbFromEnv(): bigint | undefined {
+  const raw =
+    process.env.AGENT_TBNB_MAX_PER_TX?.trim() ??
+    process.env.AGENT_USDT_MAX_PER_TX?.trim(); // compat legado nombre antiguo
   if (!raw?.length) return undefined;
   try {
-    return parseUnits(raw, decimals);
+    return parseEther(raw);
   } catch {
     return undefined;
   }
 }
 
-export const agentTools = {
-  checkUSDTBalance: tool({
-    description:
-      "Lee el balance de USDT en opBNB testnet (contrato configurado por NEXT_PUBLIC_USDT_ADDRESS_OPBNB_TESTNET).",
-    inputSchema: z.object({
-      address: z
-        .string()
-        .optional()
-        .describe(
-          "Dirección 0x a consultar. Si se omite, usa la cuenta del agente cuando exista AGENT_WALLET_PRIVATE_KEY.",
-        ),
-    }),
-    execute: async ({ address }) => {
-      const publicClient = getPublicClient(OPBNB_TESTNET_CHAIN_ID);
-      const token = getUsdtAddressOpbnbTestnet();
+export type AgentFlowLock = "A2A" | "A2B" | "A2C";
 
-      let owner: `0x${string}`;
-      if (address?.trim().length) {
-        if (!isAddress(address.trim())) {
-          throw new Error("Dirección `address` no es válida (no es formato 0x de 20 bytes).");
+/**
+ * Herramientas on-chain **tBNB nativo** opBNB testnet. Si `lockedFlow` está definido,
+ * `sendTBnb` rechaza otro `flow` (paridad con `/api/agents/demo` mock).
+ */
+export function createAgentTools(lockedFlow?: AgentFlowLock) {
+  const flowSchema = z
+    .enum(["A2A", "A2B", "A2C"])
+    .describe(
+      lockedFlow
+        ? `Debe ser ${lockedFlow} en esta página; usar ese valor aunque el ejemplo macro sugiera otro modo.`
+        : "Clasificación solicitada por el usuario; no cambia la llamada en cadena.",
+    );
+
+  return {
+    checkTBnbBalance: tool({
+      description:
+        "Lee el saldo nativo **tBNB** (Wei internos, muestra también balanceHuman en formato decimal) para una dirección 0x en opBNB testnet.",
+      inputSchema: z.object({
+        address: z
+          .string()
+          .optional()
+          .describe(
+            "Dirección 0x. Si se omite, usa la cuenta del servidor cuando exista AGENT_WALLET_PRIVATE_KEY.",
+          ),
+      }),
+      execute: async ({ address }) => {
+        const publicClient = getPublicClient(OPBNB_TESTNET_CHAIN_ID);
+
+        let owner: `0x${string}`;
+        if (address?.trim().length) {
+          if (!isAddress(address.trim())) {
+            throw new Error(
+              "Dirección `address` no es válida (no es formato 0x de 20 bytes).",
+            );
+          }
+          owner = getAddress(address.trim());
+        } else {
+          const agent = getAgentAccount();
+          if (!agent) {
+            const formatHint = getAgentPrivateKeyFormatHint();
+            if (formatHint) {
+              throw new Error(formatHint);
+            }
+            throw new Error(
+              "Sin dirección ni wallet agente: pasa `address` en la herramienta o definí AGENT_WALLET_PRIVATE_KEY válida en el servidor (reiniciá `pnpm dev` tras cambiar `.env`).",
+            );
+          }
+          owner = agent.address;
         }
-        owner = getAddress(address.trim());
-      } else {
-        const agent = getAgentAccount();
-        if (!agent) {
+
+        const wei = await publicClient.getBalance({ address: owner });
+
+        return {
+          address: owner,
+          symbol: "tBNB" as const,
+          decimals: NATIVE_DECIMALS,
+          balanceWei: wei.toString(),
+          balanceHuman: formatEther(wei),
+          chainId: OPBNB_TESTNET_CHAIN_ID,
+        };
+      },
+    }),
+
+    sendTBnb: tool({
+      description:
+        "Envía **tBNB nativo** en opBNB testnet desde la wallet servidor (AGENT_WALLET_PRIVATE_KEY); el gas también se descuenta de esa misma cuenta. Clasificación A2A/A2B/A2C es sólo etiqueta/registro.",
+      inputSchema: z.object({
+        to: z.string().describe("Destinatario (opBNB testnet): dirección 0x válida."),
+        amountHuman: z
+          .union([z.string(), z.number()])
+          .describe(
+            "Cantidad de tBNB en decimal humano (ej. \"0.01\" — se convierte con 18 decimals).",
+          ),
+        flow: flowSchema,
+      }),
+      execute: async ({ to, amountHuman, flow }) => {
+        if (lockedFlow !== undefined && flow !== lockedFlow) {
           throw new Error(
-            "Sin dirección ni wallet agente: pasa `address` o define AGENT_WALLET_PRIVATE_KEY en el servidor.",
+            `En esta página el flujo debe ser ${lockedFlow}; pediste ${flow}.`,
           );
         }
-        owner = agent.address;
-      }
 
-      const [rawBalance, decimals] = await Promise.all([
-        publicClient.readContract({
-          address: token,
-          abi: erc20Abi,
-          functionName: "balanceOf",
-          args: [owner],
-        }),
-        readUsdtDecimals(),
-      ]);
+        const walletClient = getAgentWalletClientOpbnbTestnet();
+        if (!walletClient?.account) {
+          const formatHint = getAgentPrivateKeyFormatHint();
+          if (formatHint) {
+            throw new Error(formatHint);
+          }
+          throw new Error(
+            "Falta AGENT_WALLET_PRIVATE_KEY válida en el servidor: no se pueden firmar transferencias.",
+          );
+        }
 
-      return {
-        address: owner,
-        decimals,
-        balanceRaw: rawBalance.toString(),
-        chainId: OPBNB_TESTNET_CHAIN_ID,
-        tokenAddress: token,
-      };
-    },
-  }),
+        const trimmedTo = typeof to === "string" ? to.trim() : "";
+        if (!trimmedTo || !isAddress(trimmedTo)) {
+          throw new Error("Campo `to` debe ser una dirección 0x válida.");
+        }
 
-  sendUSDT: tool({
-    description:
-      "Transfiere USDT en opBNB testnet desde la wallet servidor (AGENT_WALLET_PRIVATE_KEY) con ERC-20 transfer. Variante A2A/A2B/A2C es solo clasificación/log; gas en tBNB.",
-    inputSchema: z.object({
-      to: z
-        .string()
-        .describe("Destinatario(opBNB testnet): dirección 0x válida."),
-      amountHuman: z
-        .union([z.string(), z.number()])
-        .describe("Cantidad en unidades humanas (no wei), usando los decimals del token."),
-      flow: z
-        .enum(["A2A", "A2B", "A2C"])
-        .describe(
-          "Clasificación solicitada por el usuario; no cambia la llamada en cadena.",
-        ),
+        const amountStr =
+          typeof amountHuman === "number"
+            ? amountHuman.toString()
+            : String(amountHuman).trim();
+
+        let value: bigint;
+        try {
+          value = parseEther(amountStr);
+        } catch {
+          throw new Error(
+            "amountHuman no es válido como cantidad tBNB (usa número decimal válido).",
+          );
+        }
+        if (value <= BigInt(0)) {
+          throw new Error("amountHuman debe ser mayor que cero.");
+        }
+
+        const maxWei = parseMaxTbnbFromEnv();
+        if (maxWei !== undefined && value > maxWei) {
+          const maxHuman =
+            process.env.AGENT_TBNB_MAX_PER_TX?.trim() ??
+            process.env.AGENT_USDT_MAX_PER_TX;
+          throw new Error(
+            `Cantidad mayor que AGENT_TBNB_MAX_PER_TX (${maxHuman ?? "?"})`,
+          );
+        }
+
+        const txHash = await walletClient.sendTransaction({
+          to: getAddress(trimmedTo),
+          value,
+          chain: opBNBTestnet,
+          account: walletClient.account,
+        });
+
+        return {
+          flow,
+          txHash,
+          explorerUrl: exploreTxUrl(txHash, opBNBTestnet.id),
+          from: walletClient.account.address,
+          to: getAddress(trimmedTo),
+          amountHuman,
+          valueWei: value.toString(),
+          symbol: "tBNB" as const,
+        };
+      },
     }),
-    execute: async ({ to, amountHuman, flow }) => {
-      const walletClient = getAgentWalletClientOpbnbTestnet();
-      if (!walletClient?.account) {
-        throw new Error(
-          "Falta AGENT_WALLET_PRIVATE_KEY en el servidor: no se pueden firmar transferencias.",
-        );
-      }
+  };
+}
 
-      const trimmedTo = typeof to === "string" ? to.trim() : "";
-      if (!trimmedTo || !isAddress(trimmedTo)) {
-        throw new Error("Campo `to` debe ser una dirección 0x válida.");
-      }
-
-      const decimals = await readUsdtDecimals();
-      const maxHuman = parseMaxHumanFromEnv(decimals);
-
-      const amountStr =
-        typeof amountHuman === "number"
-          ? amountHuman.toString()
-          : String(amountHuman).trim();
-
-      let value: bigint;
-      try {
-        value = parseUnits(amountStr, decimals);
-      } catch {
-        throw new Error(
-          "amountHuman no es válido como cantidad decimal en unidades token (digits/decimals según ERC-20).",
-        );
-      }
-      if (value <= BigInt(0)) {
-        throw new Error("amountHuman debe producir cantidad mayor que cero en unidades token.");
-      }
-      if (maxHuman !== undefined && value > maxHuman) {
-        throw new Error(
-          `Cantidad mayor que AGENT_USDT_MAX_PER_TX (${process.env.AGENT_USDT_MAX_PER_TX}).`,
-        );
-      }
-
-      const token = getUsdtAddressOpbnbTestnet();
-
-      const txHash = await walletClient.writeContract({
-        address: token,
-        abi: erc20Abi,
-        functionName: "transfer",
-        args: [getAddress(trimmedTo), value],
-        chain: opBNBTestnet,
-        account: walletClient.account,
-      });
-
-      return {
-        flow,
-        txHash,
-        explorerUrl: exploreTxUrl(txHash, opBNBTestnet.id),
-        from: walletClient.account.address,
-        to: getAddress(trimmedTo),
-        amountHuman,
-        decimals,
-      };
-    },
-  }),
-};
+/** Chat sin escenario bloqueado: cualquier flow A2A|A2B|A2C válido. */
+export const agentTools = createAgentTools();

@@ -10,39 +10,20 @@ export const metadata: Metadata = {
 };
 
 const cards = [
-  {
-    href: "/workflows/a2a",
-    title: "A2A · Agent to Agent",
-    lead: "Dos agentes se liquidan entre sí (ej. diseño que paga desarrollo tras entregar trabajo).",
-  },
-  {
-    href: "/workflows/a2b",
-    title: "A2B · Agent to Business",
-    lead:
-      "El agente orquesta reposición ante stock y abona proveedores en estable con autonomía operativa.",
-  },
-  {
-    href: "/workflows/a2c",
-    title: "A2C · Agent to Consumer",
-    lead:
-      "Los ingresos consolidan en USDT y tu agente administra gastos médicos, familia y servicios.",
-  },
+  { href: "/workflows/a2a", title: "A2A · Agent to Agent" },
+  { href: "/workflows/a2b", title: "A2B · Agent to Business" },
+  { href: "/workflows/a2c", title: "A2C · Agent to Consumer" },
 ] as const;
 
 export default function WorkflowsIndexPage() {
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 pb-10">
+    <div className="flex w-full flex-col gap-6 pb-10">
       <header className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-[#f4f6fa]">Workflows</h1>
-        <p className="text-sm leading-relaxed text-[#aab3c5]">
-          Diagramas navegables con los mismos escenarios narrados en chat: pan con scroll o trackpad y
-          zoom desde los controles. Es material ilustrativo estático; el panel en cada página abre la
-          conversación del mismo caso.
-        </p>
       </header>
 
       <ul className="grid gap-4 sm:grid-cols-3">
-        {cards.map(({ href, title, lead }) => (
+        {cards.map(({ href, title }) => (
           <li key={href}>
             <Link
               href={href}
@@ -54,9 +35,6 @@ export default function WorkflowsIndexPage() {
                   className="size-4 text-[#f0b90b]"
                 />
                 <span className="text-[15px] font-semibold leading-snug">{title}</span>
-              </span>
-              <span className="text-xs leading-relaxed text-muted-foreground group-hover:text-[#cdd4e5]">
-                {lead}
               </span>
             </Link>
           </li>

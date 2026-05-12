@@ -3,6 +3,8 @@ import { randomBytes } from "crypto";
 import { tool } from "ai";
 import {
   keccak256,
+  formatEther,
+  parseEther,
   parseUnits,
   stringToHex,
   type Hex,
@@ -24,10 +26,12 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function deterministicBalanceRaw(owner: Hex): bigint {
-  const h = BigInt(keccak256(stringToHex(`mock_usdt_bal:${owner.toLowerCase()}`)));
-  const min = BigInt(parseUnits("50", MOCK_DECIMALS));
-  const span = BigInt(parseUnits("400000", MOCK_DECIMALS));
+function deterministicTbnbWeiBalance(owner: Hex): bigint {
+  const h = BigInt(
+    keccak256(stringToHex(`mock_tbnb_bal:${owner.toLowerCase()}`)),
+  );
+  const min = parseEther("12");
+  const span = BigInt(parseUnits("85", MOCK_DECIMALS));
   return min + (h % (span === BigInt(0) ? BigInt(1) : span));
 }
 
@@ -35,18 +39,18 @@ function fakeTxHash(): Hex {
   return keccak256(`0x${randomBytes(32).toString("hex")}`);
 }
 
-/** Herramientas mock con mismo contrato tipado que las reales (`sendUSDT`, `checkUSDTBalance`). */
+/** Mock alineado a las herramientas reales (`checkTBnbBalance`, `sendTBnb`). */
 export function createMockAgentTools(lockedFlow: "A2A" | "A2B" | "A2C") {
   return {
-    checkUSDTBalance: tool({
+    checkTBnbBalance: tool({
       description:
-        "Consulta disponibilidad USDT reportada por el programa para la dirección 0x indicada (salida técnica con balance en wei/unidades brutas del token).",
+        "Consulta saldo **tBNB** simulado para la cuenta 0x (balanceWei deterministico demo).",
       inputSchema: z.object({
         address: z
           .string()
           .optional()
           .describe(
-            "Tesorería 0x. Si omitís, se usa la cartera pagadora por defecto del agente en esta página.",
+            "Tesorería 0x. Si omitís, se usa la cartera ficticia del agente en esta página demo.",
           ),
       }),
       execute: async ({ address }) => {
@@ -60,32 +64,34 @@ export function createMockAgentTools(lockedFlow: "A2A" | "A2B" | "A2C") {
           owner = MOCK_AGENT_PAYER;
         }
 
-        const rawBalance = deterministicBalanceRaw(owner);
+        const wei = deterministicTbnbWeiBalance(owner);
 
         return {
           address: owner,
+          symbol: "tBNB" as const,
           decimals: MOCK_DECIMALS,
-          balanceRaw: rawBalance.toString(),
+          balanceWei: wei.toString(),
+          balanceHuman: formatEther(wei),
           chainId: OPBNB_TESTNET_CHAIN_ID,
-          tokenAddress: getAddress(
-            "0xb16b005000000000000000000000000000000042",
-          ) as Hex,
+          simulatedDemo: true as const,
         };
       },
     }),
 
-    sendUSDT: tool({
+    sendTBnb: tool({
       description:
-        "Envío programado de USDT hacia dirección contraparte usando el modo de página activo; registra explorer y métricas de la operación en el objeto de resultado.",
+        "Simula envío de **tBNB** registrando hash explorer ficticio para la demo (sin cadena real).",
       inputSchema: z.object({
         to: z.string().describe("Destinatario dirección 0x."),
         amountHuman: z
           .union([z.string(), z.number()])
-          .describe(`Cantidad en unidades humanas; el modo de flujo debe ser SIEMPRE ${lockedFlow}.`),
+          .describe(
+            `Cantidad tBNB en decimal humano; el flow debe ser SIEMPRE ${lockedFlow}.`,
+          ),
         flow: z
           .enum(["A2A", "A2B", "A2C"])
           .describe(
-            `Debe ser ${lockedFlow} en esta página; utiliza ese valor incluso cuando el ejemplo macro sea diferente.`,
+            `Debe ser ${lockedFlow} en esta página aunque el contexto sugiera otro modo.`,
           ),
       }),
       execute: async ({ to, amountHuman, flow }) => {
@@ -104,14 +110,15 @@ export function createMockAgentTools(lockedFlow: "A2A" | "A2B" | "A2C") {
           typeof amountHuman === "number"
             ? amountHuman.toString()
             : String(amountHuman).trim();
+
         try {
-          const value = parseUnits(amountStr, MOCK_DECIMALS);
-          if (value <= BigInt(0)) {
+          const parsed = parseEther(amountStr);
+          if (parsed <= BigInt(0)) {
             throw new Error();
           }
         } catch {
           throw new Error(
-            "amountHuman debe ser positivo en formato decimal válido.",
+            "amountHuman debe ser positivo como decimal tBNB válido.",
           );
         }
 
@@ -126,7 +133,8 @@ export function createMockAgentTools(lockedFlow: "A2A" | "A2B" | "A2C") {
           from: MOCK_AGENT_PAYER,
           to: getAddress(trimmedTo),
           amountHuman,
-          decimals: MOCK_DECIMALS,
+          simulatedDemo: true as const,
+          symbol: "tBNB" as const,
         };
       },
     }),

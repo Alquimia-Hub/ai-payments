@@ -3,6 +3,7 @@
 import * as React from "react";
 import { PanelLeft } from "lucide-react";
 
+import { MainContent } from "@/components/layout/main-content";
 import { AgentSidebar } from "@/components/sidebar/agent-sidebar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -12,7 +13,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const closeMobile = React.useCallback(() => setNavOpen(false), []);
 
   return (
-    <div className="flex min-h-svh bg-background">
+    <div className="flex h-full max-h-full min-h-0 w-full overflow-hidden bg-background">
       <a
         href="#contenido-principal"
         className="fixed left-4 top-3 z-[100] -translate-y-[calc(100%+28px)] rounded-lg bg-[#f0b90b] px-3 py-1.5 text-sm font-semibold text-[#0c0e12] shadow-md transition-transform focus-visible:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0e12]"
@@ -21,13 +22,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </a>
 
       <aside
-        className="hidden md:flex min-h-svh shrink-0 bg-[#0c0e12]"
+        className="hidden md:flex h-full min-h-0 shrink-0 flex-col overflow-hidden bg-[#0c0e12] px-4 py-4 pr-3"
         aria-label="Barra lateral"
       >
         <AgentSidebar />
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col bg-[#0c0e12] md:bg-background">
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#0c0e12] md:bg-background">
         <header className="md:hidden sticky top-0 z-40 flex items-center gap-3 border-b border-[#272b36] bg-[#0c0e12]/95 px-3 py-2.5 backdrop-blur-sm supports-[backdrop-filter]:backdrop-blur-sm">
           <Button
             type="button"
@@ -58,20 +59,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <SheetTitle className="sr-only">Navegación</SheetTitle>
             <div className="max-h-svh overflow-y-auto overscroll-contain pb-[max(env(safe-area-inset-bottom),12px)]">
-              <AgentSidebar
-                className="w-full border-0"
-                onNavigate={closeMobile}
-              />
+              <AgentSidebar variant="drawerEdge" onNavigate={closeMobile} />
             </div>
           </SheetContent>
         </Sheet>
 
         <main
           id="contenido-principal"
-          className="relative flex scroll-mt-24 flex-1 flex-col min-w-0 bg-background px-5 py-6 sm:px-8 sm:py-10 md:scroll-mt-0"
+          className="relative flex min-h-0 flex-1 flex-col min-w-0 overflow-hidden scroll-mt-24 md:scroll-mt-0 md:py-4 md:pr-4"
           tabIndex={-1}
         >
-          {children}
+          <MainContent>{children}</MainContent>
         </main>
       </div>
     </div>

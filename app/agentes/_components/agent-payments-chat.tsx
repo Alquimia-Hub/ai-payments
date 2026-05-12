@@ -44,10 +44,10 @@ export type AgentPaymentsChatProps = {
   api: string;
   scenario?: DemoScenario;
   title: string;
-  lead: ReactNode;
+  lead?: ReactNode;
   emptyState: {
     title: string;
-    description: string;
+    description?: string;
   };
   textareaPlaceholder?: string;
   suggestions?: SuggestionChip[];
@@ -172,12 +172,15 @@ export function AgentPaymentsChat({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 pb-8">
+    <div className="flex min-h-0 w-full flex-1 flex-col pb-8">
+      <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-5">
       <header className="shrink-0 space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-[#f4f6fa]">
           {title}
         </h1>
-        <div className="text-sm leading-relaxed text-[#aab3c5]">{lead}</div>
+        {lead ? (
+          <div className="text-sm leading-relaxed text-[#aab3c5]">{lead}</div>
+        ) : null}
 
         {suggestions?.length ? (
           <div className="flex flex-wrap gap-2 pt-1">
@@ -201,16 +204,15 @@ export function AgentPaymentsChat({
         ) : null}
       </header>
 
-      {/* Altura fija (svh): el scroll vive dentro de StickToBottom.Content, la página no crece */}
+      {/* `flex-1 min-h-0`: ocupa alto disponible debajo del encabezado; el scroll vive en Conversation. */}
       <div
         className={cn(
-          "flex w-full shrink-0 flex-col overflow-hidden rounded-2xl",
-          "h-[min(520px,calc(100svh-12rem))] sm:h-[min(560px,calc(100svh-11rem))] md:h-[min(600px,calc(100svh-10rem))]",
+          "flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl",
           "border border-[#272b36] bg-[#12151c]",
           "shadow-[0_22px_50px_-30px_rgba(0,0,0,0.85)] ring-1 ring-[#f0b90b]/[0.07]",
         )}
       >
-        <Conversation className="relative h-full min-h-0 w-full overflow-hidden rounded-2xl bg-[inherit]">
+        <Conversation className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl bg-[inherit]">
           <ConversationContent
             scrollClassName="min-h-0 overscroll-y-contain [scrollbar-gutter:stable]"
             className={cn(
@@ -289,7 +291,7 @@ export function AgentPaymentsChat({
 
       {error?.message?.length ? (
         <div
-          className="rounded-lg border border-destructive/50 bg-destructive/15 px-3 py-2 text-sm text-[#fca5a5]"
+          className="shrink-0 rounded-lg border border-destructive/50 bg-destructive/15 px-3 py-2 text-sm text-[#fca5a5]"
           role="alert"
         >
           {error.message}
@@ -298,7 +300,7 @@ export function AgentPaymentsChat({
 
       <PromptInput
         onSubmit={(m) => submitMessage(m)}
-        className="relative mt-1 w-full"
+        className="relative mt-1 w-full shrink-0"
       >
         <PromptInputTextarea
           placeholder={textareaPlaceholder ?? "Escribí aquí…"}
@@ -317,13 +319,7 @@ export function AgentPaymentsChat({
         />
       </PromptInput>
 
-      <p className="text-center text-[11px] text-muted-foreground/80">
-        Interfaz con{" "}
-        <span className="text-[#f0b90b]/80">AI Elements</span> ·{" "}
-        <kbd className="rounded border border-border px-1">Enter</kbd> enviar ·{" "}
-        <kbd className="rounded border border-border px-1">mayús+Enter</kbd> nueva
-        línea
-      </p>
+      </div>
     </div>
   );
 }

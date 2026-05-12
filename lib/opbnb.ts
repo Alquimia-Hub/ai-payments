@@ -76,6 +76,39 @@ function normalizeAgentPrivateKey(secret: string): `0x${string}` {
   return t as `0x${string}`;
 }
 
+/** Longitud esperada del secreto secp256k1 en hex sin prefijo `0x`. */
+export const AGENT_PRIVATE_KEY_HEX_LENGTH = 64;
+
+/**
+ * Si existe `AGENT_WALLET_PRIVATE_KEY` pero la cuenta agente no se puede crear, devuelve
+ * texto accionable; si falta env o está bien configurada (`getAgentAccount` ok), `null`.
+ */
+export function getAgentPrivateKeyFormatHint(): string | null {
+  const pk = process.env.AGENT_WALLET_PRIVATE_KEY?.trim();
+  if (!pk?.length) return null;
+
+  const hex = pk.startsWith("0x") ? pk.slice(2) : pk;
+  if (!/^[0-9a-fA-F]+$/.test(hex)) {
+    return "AGENT_WALLET_PRIVATE_KEY debe ser solo dígitos hex (0–9, a–f). Revisá comillas espacios o caracteres raros en el `.env`.";
+  }
+  if (hex.length !== AGENT_PRIVATE_KEY_HEX_LENGTH) {
+    return [
+      `AGENT_WALLET_PRIVATE_KEY debe tener exactamente ${AGENT_PRIVATE_KEY_HEX_LENGTH} caracteres hex (clave de 32 bytes), con o sin prefijo 0x.`,
+      `Longitud hex actual sin 0x: ${hex.length}. Si exportaste desde MetaMask u otra wallet, suele mostrarse en bloque único largo.`,
+      "(No confundir con dirección pública que son 40 hex después de 0x)",
+    ].join(" ");
+  }
+  try {
+    privateKeyToAccount(normalizeAgentPrivateKey(pk));
+    return null;
+  } catch {
+    return [
+      "AGENT_WALLET_PRIVATE_KEY tiene formato de longitud aceptable pero no es válida como clave privada secp256k1",
+      "(fuera del rango criptográfico). Generá/importá otra clave de prueba dedicada.",
+    ].join(" ");
+  }
+}
+
 /**
  * Cuenta servidor para firmar en opBNB testnet. Requiere `AGENT_WALLET_PRIVATE_KEY`; nunca público (`NEXT_PUBLIC_`).
  * Devuelve `null` si falta la variable o la clave es inválida.
@@ -90,21 +123,27 @@ export function getAgentAccount() {
   }
 }
 
-let cachedAgentWalletClient: WalletClient | null | undefined;
+let cachedWallet: { readonly address: `0x${string}`; readonly client: WalletClient } | null =
+  null;
 
 /** Cliente de escritura opcional contra opBNB testnet usando la cuenta agente. */
 export function getAgentWalletClientOpbnbTestnet(): WalletClient | null {
-  if (cachedAgentWalletClient === undefined) {
-    const account = getAgentAccount();
-    cachedAgentWalletClient = account
-      ? createWalletClient({
-          account,
-          chain: opBNBTestnet,
-          transport: http(testnetHttpUrl(), { batch: true }),
-        })
-      : null;
+  const account = getAgentAccount();
+  if (!account) {
+    cachedWallet = null;
+    return null;
   }
-  return cachedAgentWalletClient;
+  if (!cachedWallet || cachedWallet.address !== account.address) {
+    cachedWallet = {
+      address: account.address,
+      client: createWalletClient({
+        account,
+        chain: opBNBTestnet,
+        transport: http(testnetHttpUrl(), { batch: true }),
+      }),
+    };
+  }
+  return cachedWallet.client;
 }
 
 const clientByChain = new Map<number, PublicClient>();

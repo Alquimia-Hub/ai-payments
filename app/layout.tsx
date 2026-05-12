@@ -36,8 +36,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`dark ${inter.variable}`} suppressHydrationWarning>
-      <body className="min-h-svh touch-manipulation font-sans bg-background antialiased selection:bg-[#f0b90b]/30 selection:text-[#f4f6fa]">
+    <html
+      lang="es"
+      className={`dark ${inter.variable} h-dvh max-h-dvh overflow-hidden`}
+      suppressHydrationWarning
+    >
+      <body className="h-full max-h-full min-h-0 overflow-hidden touch-manipulation font-sans bg-background antialiased selection:bg-[#f0b90b]/30 selection:text-[#f4f6fa]">
         <Web3Providers>
           <TooltipProvider delay={200}>
             <AppShell>{children}</AppShell>

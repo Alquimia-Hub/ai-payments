@@ -71,7 +71,7 @@ const A2A_NODES: RFNode[] = [
     type: "workflowScenario",
     position: { x: 290, y: 100 },
     data: {
-      title: "Liquidación USDT",
+      title: "Liquidación tBNB",
       description:
         "Pago automatizado entre agentes, en segundos y sin intervenir manualmente en cada paso.",
       handles: { target: true, source: true },
@@ -120,7 +120,7 @@ const A2B_NODES: RFNode[] = [
     type: "workflowScenario",
     position: { x: 590, y: 100 },
     data: {
-      title: "Proveedor (USDT)",
+      title: "Proveedor (tBNB)",
       description: "Liquida estable on-chain mediante la tesorería autónoma del agente.",
       handles: { target: true, source: false },
     },
@@ -240,7 +240,7 @@ function WorkflowFlowInner({ scenario }: { scenario: DemoScenario }) {
 
   return (
     <Canvas
-      className="h-full min-h-[420px] w-full touch-none!"
+      className="h-full min-h-0 w-full touch-none!"
       edges={edges}
       edgeTypes={EDGE_TYPES}
       fitViewOptions={{ padding: 0.2 }}
@@ -277,11 +277,11 @@ export function PaymentWorkflowCanvas({ scenario, className }: PaymentWorkflowCa
   return (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-2xl border border-[#272b36] bg-[#12151c] shadow-[0_22px_50px_-30px_rgba(0,0,0,0.85)] ring-1 ring-[#f0b90b]/[0.07]",
+        "flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-[#272b36] bg-[#12151c] shadow-[0_22px_50px_-30px_rgba(0,0,0,0.85)] ring-1 ring-[#f0b90b]/[0.07]",
         className,
       )}
     >
-      <div className="h-[min(480px,max(420px,calc(100vh-22rem)))] min-h-[420px] w-full md:h-[min(520px,calc(100vh-14rem))]">
+      <div className="flex min-h-[320px] w-full flex-1 flex-col md:min-h-[360px]">
         <ReactFlowProvider>
           <WorkflowFlowInner scenario={scenario} />
         </ReactFlowProvider>

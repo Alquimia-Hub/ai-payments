@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Chat agente · USDT testnet",
+  title: "Chat agente · tBNB testnet",
   description:
-    "Chat streaming con herramientas sendUSDT y checkUSDTBalance en opBNB testnet.",
+    "Chat streaming con herramientas sendTBnb y checkTBnbBalance en opBNB testnet.",
 };
 
 export default function AgentesChatLayout({

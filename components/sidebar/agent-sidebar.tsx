@@ -1,23 +1,28 @@
 "use client";
 
 /**
- * Sidebar portado desde Paper MCP (artboard `ai-sidebar`, nodo raíz **47I-0**):
- * proporciones (~255px), `rounded-[10px]`, filas `h-8`, ritmo tipo Inter — adaptado tema oscuro opBNB (#0C0E12 / #F0B90B).
+ * Perfil visual al frame Paper **ai-sidebar** (Scratchpad · nodo ~47I-0): ancho `--sidebar-frame-width`,
+ * radio `--sidebar-frame-radius`, filas tipo `h-8`, tipo Inter (`globals.css`).
+ * Si Paper MCP está conectado, podés reexportar estos tokens desde **get_computed_styles** sobre ese frame.
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, type ReactNode } from "react";
 import {
   Bot,
+  ChevronDown,
   ClipboardCopy,
-  Home,
-  LayoutDashboard,
-  ListTree,
   MessageSquare,
   Wallet,
   Workflow,
+  type LucideIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+
+/** Panel acordeón: ease-out perceptible (~quint); duración cercana al tope 300 ms de UI producto. */
+const NAV_ACCORDION_DURATION = "duration-[280ms]";
+const NAV_ACCORDION_EASE = "ease-[cubic-bezier(0.23,1,0.32,1)]";
 
 type NavTone = {
   pathname: string;
@@ -34,7 +39,7 @@ function routeActive({ pathname, href, exact }: NavTone): boolean {
 function SidebarLink(props: {
   href: string;
   label: string;
-  icon: typeof Home;
+  icon: LucideIcon;
   exact?: boolean;
   /** Cierra el Sheet móvil al navegar. */
   onNavigate?: () => void;
@@ -53,8 +58,8 @@ function SidebarLink(props: {
       onClick={props.onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "items-center flex h-8 rounded-[10px] px-3 gap-2 shrink-0 outline-none transition-colors touch-manipulation border border-transparent min-h-11 md:min-h-8",
-        "focus-visible:ring-2 focus-visible:ring-[#f0b90b]/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0e12]",
+        "items-center flex h-8 rounded-[var(--sidebar-frame-radius)] px-3 gap-2 shrink-0 outline-none transition-colors touch-manipulation border border-transparent min-h-11 md:min-h-8",
+        "focus-visible:ring-2 focus-visible:ring-[#f0b90b]/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--sidebar-frame-bg)]",
         active
           ? "bg-[#f0b90b]/12 text-[#f0b90b] border-[#f0b90b]/20"
           : "text-[#b8bcc8] hover:text-[#f4f6fa] hover:bg-white/5 active:bg-white/[0.07]",
@@ -77,12 +82,76 @@ function SidebarLink(props: {
   );
 }
 
-function SectionHeading({ label }: { label: string }) {
+function CollapsibleNavGroup({
+  id,
+  label,
+  open,
+  onOpenChange,
+  children,
+  className,
+}: {
+  id: string;
+  label: string;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  const panelId = `${id}-panel`;
+
   return (
-    <div className="mb-2 px-3 pt-6 first:pt-0">
-      <p className="text-[11px]/[1.3] uppercase tracking-wide font-semibold text-[#6e7480]">
-        {label}
-      </p>
+    <div className={cn("min-w-0", className)}>
+      <button
+        type="button"
+        id={`${id}-trigger`}
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => onOpenChange(!open)}
+        className={cn(
+          "flex w-full items-center gap-2 rounded-[var(--sidebar-frame-radius)] px-3 h-8 min-h-11 md:min-h-8 text-left outline-none transition-colors touch-manipulation",
+          "text-[11px]/[1.3] uppercase tracking-wide font-semibold text-[#6e7480]",
+          "hover:text-[#b8bcc8] hover:bg-white/[0.04] focus-visible:ring-2 focus-visible:ring-[#f0b90b]/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--sidebar-frame-bg)]",
+        )}
+      >
+        <ChevronDown
+          aria-hidden
+          className={cn(
+            "size-3.5 shrink-0 text-[#6e7480]",
+            "transition-transform motion-reduce:transition-none",
+            NAV_ACCORDION_DURATION,
+            NAV_ACCORDION_EASE,
+            open ? "rotate-0" : "-rotate-90",
+          )}
+        />
+        <span className="font-[var(--font-sans)]">{label}</span>
+      </button>
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={`${id}-trigger`}
+        className={cn(
+          "grid overflow-hidden transition-[grid-template-rows] motion-reduce:transition-none",
+          NAV_ACCORDION_DURATION,
+          NAV_ACCORDION_EASE,
+          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        )}
+      >
+        <div className="min-h-0 overflow-hidden pb-1" inert={open ? undefined : true}>
+          <div
+            className={cn(
+              "flex flex-col gap-1 pt-1 motion-reduce:transition-none",
+              "transition-[opacity,transform]",
+              NAV_ACCORDION_DURATION,
+              NAV_ACCORDION_EASE,
+              open
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 -translate-y-1 motion-reduce:translate-y-0",
+            )}
+          >
+            {children}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -90,22 +159,50 @@ function SectionHeading({ label }: { label: string }) {
 export type AgentSidebarProps = {
   className?: string;
   onNavigate?: () => void;
+  /**
+   * Drawer móvil: cantos sólo derecha pegados al viewport; escritorio usar `frame` (tarjeta flotante).
+   */
+  variant?: "frame" | "drawerEdge";
 };
 
-export function AgentSidebar({ className, onNavigate }: AgentSidebarProps) {
-  const navSectionClass =
-    "flex flex-col gap-1 min-h-0 overscroll-contain pb-8";
+export function AgentSidebar({
+  className,
+  onNavigate,
+  variant = "frame",
+}: AgentSidebarProps) {
+  const [appsOpen, setAppsOpen] = useState(true);
+  const [agentesOpen, setAgentesOpen] = useState(true);
+  const [workflowsOpen, setWorkflowsOpen] = useState(true);
+
+  const navStackClass =
+    "flex flex-col gap-4 min-h-0 overscroll-contain pb-8 pt-3";
 
   return (
     <div
       translate="no"
+      data-slot="agent-sidebar-root"
       className={cn(
-        "flex flex-col w-[255px] min-h-0 shrink-0 antialiased bg-[#0c0e12] border-r border-[#272b36] text-[#b8bcc8]",
+        "flex flex-col antialiased text-[#b8bcc8]",
+        variant === "frame"
+          ? [
+              "min-h-0 w-[var(--sidebar-frame-width)] max-w-full shrink-0 flex-1",
+              "rounded-[var(--sidebar-frame-radius)]",
+              "[background-color:var(--sidebar-frame-bg)]",
+              "[border-width:1px] [border-color:var(--sidebar-frame-border)] [border-style:solid]",
+              "[box-shadow:var(--sidebar-frame-shadow)]",
+              "isolate overflow-hidden overflow-x-hidden",
+            ]
+          : [
+              "min-h-svh max-h-none w-[min(100vw,286px)] shrink-0 sm:max-w-none",
+              "rounded-none rounded-br-[var(--sidebar-frame-radius)] rounded-tr-[var(--sidebar-frame-radius)]",
+              "[background-color:var(--sidebar-frame-bg)]",
+              "border-[var(--sidebar-frame-border)] border-y border-r border-l-0",
+            ],
         className,
       )}
     >
-      <div className="p-3 border-b border-[#272b36]/80 shrink-0">
-        <div className="flex w-full items-center gap-2.5 rounded-[10px] h-10 px-2.5 border border-transparent">
+      <div className="shrink-0 border-b border-[#272b36]/80 px-3 pb-3 pt-3">
+        <div className="flex h-10 w-full items-center gap-2.5 rounded-[var(--sidebar-frame-radius)] border border-transparent px-2.5">
           <div
             className="flex size-9 shrink-0 items-center justify-center rounded-md shadow-[inset_0_0_0_1px_rgba(240,185,11,0.25)] bg-[#141923] ring-1 ring-white/10"
             aria-hidden
@@ -130,100 +227,90 @@ export function AgentSidebar({ className, onNavigate }: AgentSidebarProps) {
       </div>
 
       <nav
-        className="basis-0 flex-1 overflow-y-auto p-3 overscroll-contain"
+        className="basis-0 flex-1 overflow-y-auto px-3 pb-3 overscroll-contain"
         aria-label="Navegación principal"
       >
-        <SectionHeading label="Apps" />
-        <div className={navSectionClass}>
-          <SidebarLink
-            href="/"
-            label="Home (Dashboard)"
-            icon={LayoutDashboard}
-            exact
-            onNavigate={onNavigate}
-          />
-          <SidebarLink
-            href="/wallet"
-            label="Wallet"
-            icon={Wallet}
-            exact
-            onNavigate={onNavigate}
-          />
+        <div className={navStackClass}>
+          <CollapsibleNavGroup
+            id="nav-apps"
+            label="Apps"
+            open={appsOpen}
+            onOpenChange={setAppsOpen}
+          >
+            <SidebarLink
+              href="/wallet"
+              label="Wallet"
+              icon={Wallet}
+              exact
+              onNavigate={onNavigate}
+            />
+          </CollapsibleNavGroup>
 
-          <div className="mt-6">
-            <SectionHeading label="Agentes" />
-          </div>
-          <SidebarLink
-            href="/agentes/chat"
-            label="Chat · USDT (agente)"
-            icon={MessageSquare}
-            exact
-            onNavigate={onNavigate}
-          />
-          <SidebarLink
-            href="/agentes/a2a"
-            label="A2A – Agent to Agent"
-            icon={Bot}
-            onNavigate={onNavigate}
-          />
-          <SidebarLink
-            href="/agentes/a2b"
-            label="A2B – Agent to Business"
-            icon={Bot}
-            onNavigate={onNavigate}
-          />
-          <SidebarLink
-            href="/agentes/a2c"
-            label="A2C – Agent to Consumer"
-            icon={Bot}
-            onNavigate={onNavigate}
-          />
+          <CollapsibleNavGroup
+            id="nav-agentes"
+            label="Agentes"
+            open={agentesOpen}
+            onOpenChange={setAgentesOpen}
+          >
+            <SidebarLink
+              href="/agentes/chat"
+              label="Chat · tBNB (agente)"
+              icon={MessageSquare}
+              exact
+              onNavigate={onNavigate}
+            />
+            <SidebarLink
+              href="/agentes/a2a"
+              label="A2A – Agent to Agent"
+              icon={Bot}
+              onNavigate={onNavigate}
+            />
+            <SidebarLink
+              href="/agentes/a2b"
+              label="A2B – Agent to Business"
+              icon={Bot}
+              onNavigate={onNavigate}
+            />
+            <SidebarLink
+              href="/agentes/a2c"
+              label="A2C – Agent to Consumer"
+              icon={Bot}
+              onNavigate={onNavigate}
+            />
+          </CollapsibleNavGroup>
 
-          <div className="mt-6">
-            <SectionHeading label="Workflows" />
-          </div>
-          <SidebarLink
-            href="/workflows"
-            label="Diagramas (índice)"
-            icon={Workflow}
-            exact
-            onNavigate={onNavigate}
-          />
-          <SidebarLink
-            href="/workflows/a2a"
-            label="A2A · diagrama"
-            icon={Workflow}
-            onNavigate={onNavigate}
-          />
-          <SidebarLink
-            href="/workflows/a2b"
-            label="A2B · diagrama"
-            icon={Workflow}
-            onNavigate={onNavigate}
-          />
-          <SidebarLink
-            href="/workflows/a2c"
-            label="A2C · diagrama"
-            icon={Workflow}
-            onNavigate={onNavigate}
-          />
-
-          <div className="mt-6">
-            <SectionHeading label="Operaciones" />
-          </div>
-          <SidebarLink
-            href="/transacciones"
-            label="Transacciones"
-            icon={ListTree}
-            onNavigate={onNavigate}
-          />
-          <SidebarLink
-            href="/replicar"
-            label="Replicar Demo"
-            icon={Home}
-            exact
-            onNavigate={onNavigate}
-          />
+          <CollapsibleNavGroup
+            id="nav-workflows"
+            label="Workflows"
+            open={workflowsOpen}
+            onOpenChange={setWorkflowsOpen}
+          >
+            <SidebarLink
+              href="/workflows"
+              label="Inicio"
+              icon={Workflow}
+              exact
+              onNavigate={onNavigate}
+            />
+            <SidebarLink
+              href="/workflows/a2a"
+              label="A2A · diagrama"
+              icon={Workflow}
+              onNavigate={onNavigate}
+            />
+            <SidebarLink
+              href="/workflows/a2b"
+              label="A2B · diagrama"
+              icon={Workflow}
+              onNavigate={onNavigate}
+            />
+            <SidebarLink
+              href="/workflows/a2c"
+              label="A2C · diagrama"
+              icon={Workflow}
+              onNavigate={onNavigate}
+            />
+          </CollapsibleNavGroup>
         </div>
       </nav>
     </div>
