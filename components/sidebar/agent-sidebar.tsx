@@ -286,13 +286,6 @@ export function AgentSidebar({
             onOpenChange={setWorkflowsOpen}
           >
             <SidebarLink
-              href="/workflows"
-              label="Inicio"
-              icon={Workflow}
-              exact
-              onNavigate={onNavigate}
-            />
-            <SidebarLink
               href="/workflows/a2a"
               label="A2A · diagrama"
               icon={Workflow}

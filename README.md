@@ -8,7 +8,7 @@
 - **Wallet (`/wallet`)**: vista **wagmi** para conectar billetera y operar contra la cadena donde esté configurada la demo (ej. red de prueba), **fuera del flujo de chat con herramientas servidor**.
 - **Chat tBNB (`/agentes/chat`)**: mismo agente que `POST /api/agents/execute` **sin** `scenario` en el cuerpo: el modelo elige clasificación **A2A | A2B | A2C** libremente en cada `sendTBnb` (on-chain cuando hay clave).
 - **Escenarios narrativos (`/agentes/a2a`, `/agentes/a2b`, `/agentes/a2c`)**: también usan `POST /api/agents/execute` enviando `scenario` en el body junto con `messages`; el servidor **bloquea** ese flow y fuerza herramientas reales (**misma lógica de lock que el mock anterior**). Las transferencias son **tBNB nativas** en opBNB testnet.
-- **Workflows (`/workflows`, `/workflows/a2a`, …)**: diagramas estáticos (React Flow + AI Elements) que **solo ilustran** la misma tríada A2A/A2B/A2C y enlazan al chat correspondiente.
+- **Workflows (`/workflows/a2a`, …; `/workflows` redirige a A2A)**: diagramas estáticos (React Flow + AI Elements) que **solo ilustran** la misma tríada A2A/A2B/A2C y enlazan al chat correspondiente.
 
 ### Endpoint mock (opcional para integraciones sin fondos)
 
