@@ -76,7 +76,11 @@ export async function POST(req: Request) {
     const provider = createOpenAI({ apiKey });
     const result = streamText({
       model: provider.chat("gpt-4o-mini"),
-      system: getScenarioSystemPrompt(lockedFlow),
+      system: `${getScenarioSystemPrompt(lockedFlow)}
+
+---
+
+Flujo demo (herramientas mock): para transferir tBNB simulado, primero **proposeSendTBnb**; solo después de que el usuario confirme (en la UI con modal o por mensaje explícito) llamá **sendTBnb** con los mismos \`to\`, \`amountHuman\` y \`flow\`.`,
       messages: await convertToModelMessages(messages),
       tools: mockTools,
       stopWhen: stepCountIs(10),

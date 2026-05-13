@@ -20,13 +20,30 @@ export function WalletPanel() {
   const { disconnect } = useDisconnect();
   const { switchChainAsync, isPending: switching } = useSwitchChain();
   const [copied, setCopied] = React.useState(false);
-  /** Evita hydration mismatch: en SSR wagmi aparece desconectado; en cliente puede hidratar ya reconectado. */
-  const [hasMounted, setHasMounted] = React.useState(false);
-  React.useEffect(() => {
-    setHasMounted(true);
-  }, []);
+  /**
+   * Primer paint cliente tras hidratar: mismo valor que en SSR (`false`), luego `true`.
+   * `useSyncExternalStore` + getServerSnapshot evita mismatch y cumple react-hooks/set-state-in-effect.
+   */
+  const hasMounted = React.useSyncExternalStore(
+    React.useCallback(() => () => {}, []),
+    () => true,
+    () => false,
+  );
 
   const showAccountUi = hasMounted && isConnected;
+
+  /** Nunca listar Injected genérico ni Brave aunque el config vuelva a exponerlos. */
+  const visibleConnectors = React.useMemo(
+    () =>
+      connectors.filter((c) => {
+        const name = c.name.toLowerCase();
+        const id = c.id.toLowerCase();
+        if (name === "injected" || id === "injected") return false;
+        if (name.includes("brave") || id.includes("brave")) return false;
+        return true;
+      }),
+    [connectors],
+  );
 
   const short =
     address && `${address.slice(0, 6)}…${address.slice(address.length - 4)}`;
@@ -63,7 +80,7 @@ export function WalletPanel() {
                 Wallet
               </h1>
               <p className="text-sm leading-relaxed text-[#97a2b9]">
-                opBNB · conexión vía extensiones del navegador (MetaMask, Rabby…).
+                opBNB · conexión con MetaMask (extensión o app).
               </p>
             </div>
           </div>
@@ -81,24 +98,44 @@ export function WalletPanel() {
                   Conectar
                 </h2>
               </div>
-              <ul className="flex flex-col gap-2.5" role="list">
-                {connectors.slice(0, 5).map((c) => (
-                  <li key={c.uid}>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isPending}
-                      onClick={() => connect({ connector: c })}
-                      className={cn(
-                        "h-12 w-full justify-start gap-3 rounded-[var(--sidebar-frame-radius)] border-[#394355] bg-[#151b27] px-4 text-left text-[15px] font-medium text-[#e8edf5]",
-                        "transition-colors hover:border-[#f0b90b]/35 hover:bg-[#1c2535] active:bg-[#1a2230]",
-                        "focus-visible:ring-2 focus-visible:ring-[#f0b90b]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#11161f]",
-                      )}
-                    >
-                      <span className="truncate">{c.name}</span>
-                    </Button>
-                  </li>
-                ))}
+              <ul
+                className="flex flex-col gap-2.5"
+                role="list"
+                aria-busy={!hasMounted}
+                aria-label={!hasMounted ? "Cargando opciones de conexión" : "Opciones de conexión"}
+              >
+                {/*
+                  connectors dependen del entorno (extensiones, etc.): en SSR y en el
+                  primer paint del cliente no coinciden → hidratación rota si mapeamos
+                  antes de montar. Esqueleto fijo hasta hasMounted.
+                */}
+                {!hasMounted
+                  ? [0].map((i) => (
+                      <li key={`connector-skel-${i}`} aria-hidden>
+                        <div
+                          className={cn(
+                            "h-12 w-full animate-pulse rounded-[var(--sidebar-frame-radius)] border border-[#272b36]/80 bg-[#151b27]/60",
+                          )}
+                        />
+                      </li>
+                    ))
+                  : visibleConnectors.slice(0, 5).map((c) => (
+                      <li key={c.uid}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={isPending}
+                          onClick={() => connect({ connector: c })}
+                          className={cn(
+                            "h-12 w-full justify-start gap-3 rounded-[var(--sidebar-frame-radius)] border-[#394355] bg-[#151b27] px-4 text-left text-[15px] font-medium text-[#e8edf5]",
+                            "transition-colors hover:border-[#f0b90b]/35 hover:bg-[#1c2535] active:bg-[#1a2230]",
+                            "focus-visible:ring-2 focus-visible:ring-[#f0b90b]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#11161f]",
+                          )}
+                        >
+                          <span className="truncate">{c.name}</span>
+                        </Button>
+                      </li>
+                    ))}
               </ul>
             </section>
           ) : (

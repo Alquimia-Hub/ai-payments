@@ -3,10 +3,13 @@
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
+  getToolName,
+  isToolUIPart,
   type UIMessage,
 } from "ai";
 import { MessageSquare } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { useAccount } from "wagmi";
 
 import {
   Conversation,
@@ -26,6 +29,14 @@ import {
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AGENT_TOOL_PROPOSE_SEND_TBNB } from "@/lib/agent-tools";
 import { cn } from "@/lib/utils";
 
 import {
@@ -33,6 +44,56 @@ import {
   trailingTextPartIndex,
 } from "@/app/agentes/_components/agent-chat-message-parts";
 import type { DemoScenario } from "@/lib/agent-demo-prompts";
+
+type PendingSendProposal =
+  | {
+      toolCallId: string;
+      to: string;
+      amountHuman: string;
+      flow: string;
+      validationSummary: string;
+      fromTreasury?: string;
+    }
+  | null;
+
+function findPendingSendProposal(messages: UIMessage[]): PendingSendProposal {
+  for (let mi = messages.length - 1; mi >= 0; mi -= 1) {
+    const m = messages[mi];
+    if (m.role !== "assistant") continue;
+    const parts = [...(m.parts ?? [])].reverse();
+    for (const part of parts) {
+      if (!isToolUIPart(part)) continue;
+      if (getToolName(part) !== AGENT_TOOL_PROPOSE_SEND_TBNB) continue;
+      if (part.state !== "output-available") continue;
+      const out = part.output as Record<string, unknown> | undefined;
+      if (
+        !out ||
+        out.status !== "awaiting_user_confirmation" ||
+        typeof out.to !== "string" ||
+        typeof out.amountHuman !== "string" ||
+        typeof out.flow !== "string" ||
+        typeof out.validationSummary !== "string"
+      ) {
+        continue;
+      }
+      const toolCallId = part.toolCallId;
+      if (typeof toolCallId !== "string" || toolCallId.length === 0) continue;
+      const fromTreasury =
+        typeof out.fromTreasury === "string" && out.fromTreasury.length > 0
+          ? out.fromTreasury
+          : undefined;
+      return {
+        toolCallId,
+        to: out.to,
+        amountHuman: out.amountHuman,
+        flow: out.flow,
+        validationSummary: out.validationSummary,
+        fromTreasury,
+      };
+    }
+  }
+  return null;
+}
 
 export type SuggestionChip = {
   label: string;
@@ -62,13 +123,28 @@ export function AgentPaymentsChat({
   textareaPlaceholder,
   suggestions,
 }: AgentPaymentsChatProps) {
+  const { address, isConnected } = useAccount();
+
+  const [dismissedProposalToolCallIds, setDismissedProposalToolCallIds] =
+    useState<string[]>([]);
+
+  const dismissedProposalSet = useMemo(
+    () => new Set(dismissedProposalToolCallIds),
+    [dismissedProposalToolCallIds],
+  );
+
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api,
-        ...(scenario ? { body: { scenario } } : {}),
+        body: {
+          ...(scenario ? { scenario } : {}),
+          ...(isConnected && address
+            ? { browserWalletAddress: address }
+            : {}),
+        },
       }),
-    [api, scenario],
+    [api, scenario, isConnected, address],
   );
 
   const { messages, sendMessage, status, stop, error } = useChat({
@@ -85,6 +161,40 @@ export function AgentPaymentsChat({
 
   const isGenerating = status === "streaming" || status === "submitted";
 
+  const modalSendProposal = useMemo((): PendingSendProposal => {
+    if (isGenerating) return null;
+    const raw = findPendingSendProposal(messages);
+    if (!raw) return null;
+    if (dismissedProposalSet.has(raw.toolCallId)) return null;
+    return raw;
+  }, [messages, isGenerating, dismissedProposalSet]);
+
+  const handleApproveSend = () => {
+    if (!modalSendProposal) return;
+    setDismissedProposalToolCallIds((prev) =>
+      prev.includes(modalSendProposal.toolCallId)
+        ? prev
+        : [...prev, modalSendProposal.toolCallId],
+    );
+    const { to, amountHuman, flow } = modalSendProposal;
+    void sendMessage({
+      text: `[Usuario OK envío tBNB]\nAutorizo la transferencia desde la tesorería del agente. Ejecutá sendTBnb con to exactamente "${to}", amountHuman exactamente "${amountHuman}" y flow "${flow}".`,
+    });
+  };
+
+  const handleRejectSend = () => {
+    if (modalSendProposal) {
+      setDismissedProposalToolCallIds((prev) =>
+        prev.includes(modalSendProposal.toolCallId)
+          ? prev
+          : [...prev, modalSendProposal.toolCallId],
+      );
+    }
+    void sendMessage({
+      text: "[Usuario rechaza] No autorizo este envío de tBNB en este momento.",
+    });
+  };
+
   async function submitMessage({ text }: PromptInputMessage): Promise<void> {
     const trimmed = text.trim();
     if (!trimmed.length) return;
@@ -97,6 +207,69 @@ export function AgentPaymentsChat({
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col pb-8">
+      <Dialog
+        open={modalSendProposal !== null}
+        onOpenChange={(next) => {
+          if (!next && modalSendProposal) {
+            setDismissedProposalToolCallIds((prev) =>
+              prev.includes(modalSendProposal.toolCallId)
+                ? prev
+                : [...prev, modalSendProposal.toolCallId],
+            );
+          }
+        }}
+      >
+        <DialogContent className="border-[#272b36] bg-[#12151c] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#f4f6fa]">
+              Confirmar envío · tBNB
+            </DialogTitle>
+            <div className="space-y-2 pt-2 text-[#aab3c5]">
+              <p>
+                El agente propone debitar la tesorería servidor en opBNB
+                testnet. Revisá los datos antes de autorizar.
+              </p>
+              {modalSendProposal ? (
+                <ul className="list-disc space-y-1 pl-4 text-[13px]">
+                  <li>
+                    Monto:&nbsp;
+                    <span className="font-mono">{modalSendProposal.amountHuman}</span>
+                    &nbsp;tBNB
+                  </li>
+                  <li>
+                    Clasificación:&nbsp;
+                    <span className="font-mono">{modalSendProposal.flow}</span>
+                  </li>
+                  {modalSendProposal.fromTreasury ? (
+                    <li className="break-all font-mono text-[11px] text-[#8b929e]">
+                      Desde tesorería: {modalSendProposal.fromTreasury}
+                    </li>
+                  ) : null}
+                  <li className="break-all font-mono text-[11px] text-[#8b929e]">
+                    Destino: {modalSendProposal.to}
+                  </li>
+                </ul>
+              ) : null}
+              <p className="text-[12px] leading-relaxed text-[#aab3c5]">
+                {modalSendProposal?.validationSummary}
+              </p>
+            </div>
+          </DialogHeader>
+          <DialogFooter className="-mx-0 border-0 bg-transparent px-0 sm:justify-between">
+            <Button type="button" variant="outline" onClick={() => handleRejectSend()}>
+              Rechazar
+            </Button>
+            <Button
+              type="button"
+              className="bg-[#f0b90b] text-[#0c0e12] hover:bg-[#fcd535]"
+              onClick={() => handleApproveSend()}
+            >
+              Autorizar envío
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-5">
       <header className="shrink-0 space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-[#f4f6fa]">
@@ -228,7 +401,7 @@ export function AgentPaymentsChat({
         className="relative mt-1 w-full shrink-0"
       >
         <PromptInputTextarea
-          placeholder={textareaPlaceholder ?? "Escribí aquí…"}
+          placeholder={textareaPlaceholder ?? ""}
           className={cn(
             "field-sizing-content min-h-[7.5rem] w-full resize-none rounded-xl pb-14 pr-[3.25rem]",
             "border-[#2b3344] bg-background/98 text-base leading-relaxed placeholder:text-muted-foreground/85 md:text-[15px]",

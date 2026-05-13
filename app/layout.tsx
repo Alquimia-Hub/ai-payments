@@ -1,11 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { headers } from "next/headers";
+import { cookieToInitialState } from "wagmi";
 
 import "./globals.css";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/shell/app-shell";
 import { Web3Providers } from "@/components/providers/web3-providers";
+import { wagmiConfig } from "@/lib/wagmi";
 
 /** Debe coincidir con `@theme --font-sans` en `globals.css` (`var(--font-inter), …`). */
 const inter = Inter({
@@ -30,11 +33,16 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const initialState = cookieToInitialState(
+    wagmiConfig,
+    (await headers()).get("cookie"),
+  );
+
   return (
     <html
       lang="es"
@@ -42,7 +50,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="h-full max-h-full min-h-0 overflow-hidden touch-manipulation font-sans bg-background antialiased selection:bg-[#f0b90b]/30 selection:text-[#f4f6fa]">
-        <Web3Providers>
+        <Web3Providers initialState={initialState}>
           <TooltipProvider delay={200}>
             <AppShell>{children}</AppShell>
           </TooltipProvider>

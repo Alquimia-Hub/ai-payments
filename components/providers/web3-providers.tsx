@@ -2,11 +2,20 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as React from "react";
-import { WagmiProvider } from "wagmi";
+import { type State, WagmiProvider } from "wagmi";
 
 import { wagmiConfig } from "@/lib/wagmi";
 
-export function Web3Providers({ children }: { children: React.ReactNode }) {
+type Web3ProvidersProps = {
+  children: React.ReactNode;
+  /** Desde `cookieToInitialState` en el layout (guía SSR wagmi). */
+  initialState?: State;
+};
+
+export function Web3Providers({
+  children,
+  initialState,
+}: Web3ProvidersProps) {
   const [queryClient] = React.useState(
     () =>
       new QueryClient({
@@ -17,7 +26,7 @@ export function Web3Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <WagmiProvider config={wagmiConfig}>
+    <WagmiProvider config={wagmiConfig} initialState={initialState}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </WagmiProvider>
   );

@@ -6,6 +6,7 @@ import {
   A2A_TESTNET_EXPLORER_BASE,
   parseA2aMaxDemoTbnbHuman,
 } from "@/lib/a2a-dual-config";
+import { assertAtLeastAgentTbnbMin } from "@/lib/agent-tbnb-amounts";
 import {
   exploreAddressUrl,
   exploreTxUrl,
@@ -80,7 +81,7 @@ export function createA2aDualTools(role: "alicia" | "juan"): ToolSet {
           amountHuman: z
             .union([z.string(), z.number()])
             .describe(
-              "Monto solicitado en tBNB decimal humano, micro-monto de demo (< límite A2A_MAX_DEMO_TBNB).",
+              "Monto solicitado en tBNB decimal humano (≥ mínimo AGENT_TBNB_MIN_PER_TX; < límite A2A_MAX_DEMO_TBNB).",
             ),
           summary: z
             .string()
@@ -114,6 +115,8 @@ export function createA2aDualTools(role: "alicia" | "juan"): ToolSet {
           }
           if (value <= BigInt(0))
             throw new Error("amountHuman debe ser mayor que cero.");
+
+          assertAtLeastAgentTbnbMin(value, "submitDeliverableAndInvoice amountHuman");
 
           const maxDemo = parseA2aMaxDemoTbnbHuman();
           if (maxDemo > BigInt(0) && value > maxDemo) {
@@ -191,7 +194,7 @@ export function createA2aDualTools(role: "alicia" | "juan"): ToolSet {
         budgetMaxHuman: z
           .string()
           .describe(
-            "Tope máximo en tBNB humano muy bajo (ej. \"0.0002\") acorde demo.",
+            "Tope máximo en tBNB humano (≥ mínimo AGENT_TBNB_MIN_PER_TX; micro-presupuesto demo).",
           ),
       }),
 
@@ -215,6 +218,7 @@ export function createA2aDualTools(role: "alicia" | "juan"): ToolSet {
         } catch {
           throw new Error("budgetMaxHuman no es decimal tBNB válido.");
         }
+        assertAtLeastAgentTbnbMin(budgetWei, "publishFreelanceJob budgetMaxHuman");
         const maxDemo = parseA2aMaxDemoTbnbHuman();
         if (maxDemo > BigInt(0) && budgetWei > maxDemo)
           throw new Error(
@@ -247,7 +251,7 @@ export function createA2aDualTools(role: "alicia" | "juan"): ToolSet {
         amountHuman: z
           .union([z.string(), z.number()])
           .describe(
-            "Monto en tBNB humano a liquidar tras confirmación (micro-monto).",
+            "Monto en tBNB humano a liquidar (≥ mínimo AGENT_TBNB_MIN_PER_TX; micro-monto).",
           ),
         validationSummary: z
           .string()
@@ -277,6 +281,7 @@ export function createA2aDualTools(role: "alicia" | "juan"): ToolSet {
           throw new Error("amountHuman no válido.");
         }
         if (value <= BigInt(0)) throw new Error("Monto > 0 requerido.");
+        assertAtLeastAgentTbnbMin(value, "proposePaymentSettlement amountHuman");
         const maxDemo = parseA2aMaxDemoTbnbHuman();
         if (maxDemo > BigInt(0) && value > maxDemo)
           throw new Error(
@@ -300,7 +305,9 @@ export function createA2aDualTools(role: "alicia" | "juan"): ToolSet {
       description:
         "Liquida micro-monto tBNB vía **autotransferencia** desde tesorería (misma cuenta `to`). Solo tras confirmación del usuario.",
       inputSchema: z.object({
-        amountHuman: z.union([z.string(), z.number()]),
+        amountHuman: z
+          .union([z.string(), z.number()])
+          .describe("tBNB humano ≥ AGENT_TBNB_MIN_PER_TX (coincidir con el acordado en el modal)."),
       }),
 
       execute: async ({
@@ -332,6 +339,8 @@ export function createA2aDualTools(role: "alicia" | "juan"): ToolSet {
           throw new Error("amountHuman inválido.");
         }
         if (value <= BigInt(0)) throw new Error("Monto debe ser > 0.");
+
+        assertAtLeastAgentTbnbMin(value, "sendSettlementTBnb amountHuman");
 
         const maxWei = parseMaxTbnbPerTxEnv();
         if (maxWei !== undefined && value > maxWei)

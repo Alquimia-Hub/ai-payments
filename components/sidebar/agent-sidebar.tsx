@@ -286,8 +286,8 @@ export function AgentSidebar({
             onOpenChange={setWorkflowsOpen}
           >
             <SidebarLink
-              href="/workflows/a2a"
-              label="A2A · diagrama"
+              href="/workflows/a2c"
+              label="A2C · diagrama"
               icon={Workflow}
               onNavigate={onNavigate}
             />
@@ -298,8 +298,8 @@ export function AgentSidebar({
               onNavigate={onNavigate}
             />
             <SidebarLink
-              href="/workflows/a2c"
-              label="A2C · diagrama"
+              href="/workflows/a2a"
+              label="A2A · diagrama"
               icon={Workflow}
               onNavigate={onNavigate}
             />

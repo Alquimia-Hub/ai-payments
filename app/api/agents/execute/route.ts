@@ -5,6 +5,7 @@ import {
   streamText,
   stepCountIs,
 } from "ai";
+import { getAddress, isAddress } from "viem";
 
 import { getA2aDualRoleSystemPrompt, isA2aDualRole } from "@/lib/a2a-dual-prompts";
 import { createA2aDualTools } from "@/lib/a2a-dual-tools";
@@ -31,7 +32,8 @@ Reglas operativas:
 - Solo transferís **tBNB nativo** (mensajes con valor en la transacción, 18 decimals). No uses contratos ERC-20 en estas herramientas.
 - La wallet servidor firma con AGENT_WALLET_PRIVATE_KEY cuando existe: **el mismo saldo en tBNB paga gas y el monto enviado**. Si falta fondo suficiente (gas + valor), explicá cómo usar faucet testnet sin inventar tasas cambiarias fuera del contexto.
 - Antes de mover montos grandes conviene **checkTBnbBalance** sobre la tesorería 0x que corresponda o la cuenta agente cuando no aclaren dirección.
-- **sendTBnb** requiere destinatario 0x, **amountHuman** en tBNB y flow uno de A2A | A2B | A2C (clasificación sólo auditoría/logs del usuario). Si la sesión trae \`scenario\` en el cuerpo, **solo** vale ese flow para la página actual.
+- Para **iniciar** un envío de tBNB usá primero **proposeSendTBnb** (destino, monto, flow y **validationSummary** breve). Eso deja la operación en **awaiting_user_confirmation** hasta que la persona usuaria confirme en el **modal** de la app. **Solo** después de esa confirmación (o un mensaje explícito de autorización equivalente) llamá **sendTBnb** con **exactamente** los mismos \`to\`, \`amountHuman\` y \`flow\`. No llames **sendTBnb** para “proponer” un pago ni antes del OK humano.
+- **sendTBnb** requiere destinatario 0x, **amountHuman** en tBNB (no menor que **AGENT_TBNB_MIN_PER_TX**, por defecto \`0.00005\` tBNB salvo que configures \`0\` para desactivar) y flow uno de A2A | A2B | A2C (clasificación sólo auditoría/logs del usuario). Si la sesión trae \`scenario\` en el cuerpo, **solo** vale ese flow para la página actual.
 - Opcional: \`AGENT_TBNB_MAX_PER_TX\` limita cuántos tBNB puede enviar una sola herramienta (string decimal humano).
 - Nunca ejecutes llamadas contra mainnet; chain id debe ser ${OPBNB_TESTNET_CHAIN_ID}.
 
@@ -76,7 +78,7 @@ export async function POST(req: Request) {
     return Response.json(
       {
         error:
-          "Se espera cuerpo { messages: UIMessage[], scenario?: 'a2a'|'a2b'|'a2c', a2aRole?: 'alicia'|'juan' } (a2aRole solo si scenario=a2a).",
+          "Se espera cuerpo { messages: UIMessage[], scenario?, a2aRole?, browserWalletAddress? }.",
       },
       { status: 412 },
     );
@@ -118,6 +120,27 @@ export async function POST(req: Request) {
     );
   }
 
+  const browserWalletRaw = (parsed as { browserWalletAddress?: unknown })
+    .browserWalletAddress;
+  let connectedWalletInstruction = "";
+  if (
+    typeof browserWalletRaw === "string" &&
+    browserWalletRaw.trim().length > 0
+  ) {
+    const trimmed = browserWalletRaw.trim();
+    if (isAddress(trimmed)) {
+      const ca = getAddress(trimmed);
+      connectedWalletInstruction = `
+
+---
+
+Conexión en el navegador (MetaMask u otra billetera):
+- La persona usuaria tiene **conectada** la cuenta \`${ca}\` en esta sesión.
+- Cuando pregunte por **su** saldo, **mi** balance, cuánto **tiene**/**tengo** en la cuenta **conectada**, fondos **propios** en testnet, etc., llamá **checkTBnbBalance** con el parámetro \`address\` igual a \`${ca}\` **de inmediato**, sin pedirle que pegue la dirección otra vez (salvo que pida explícitamente **otra** cuenta o el saldo de la tesorería del agente sin referirse a la suya).
+`;
+    }
+  }
+
   const lockedFlow =
     scenarioRaw !== undefined ? scenarioToLockedFlow(scenarioRaw) : undefined;
   const a2aDualRole =
@@ -128,12 +151,17 @@ export async function POST(req: Request) {
       ? createA2aDualTools(a2aDualRole)
       : createAgentTools(lockedFlow);
 
-  const system =
+  const baseSystem =
     a2aDualRole !== undefined
       ? `${AGENT_SYSTEM_BASE}\n\n---\n\n${getScenarioSystemPrompt("A2A")}\n\n---\n\n${getA2aDualRoleSystemPrompt(a2aDualRole)}`
       : lockedFlow === undefined
         ? AGENT_SYSTEM_BASE
         : `${AGENT_SYSTEM_BASE}\n\n---\n\n${getScenarioSystemPrompt(lockedFlow)}`;
+
+  const system =
+    a2aDualRole === undefined
+      ? baseSystem + connectedWalletInstruction
+      : baseSystem;
 
   try {
     const provider = createOpenAI({ apiKey });

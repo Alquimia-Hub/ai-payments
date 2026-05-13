@@ -57,61 +57,65 @@ const EDGE_TYPES = { animated: Edge.Animated };
 
 const A2A_NODES: RFNode[] = [
   {
-    id: "a2a-agent-design",
+    id: "a2a-juan",
     type: "workflowScenario",
     position: { x: 0, y: 100 },
     data: {
-      title: "Agente diseño",
-      description: "Entrega cerrada del banner.",
+      title: "Juan presenta el cobro",
+      description:
+        "El freelancer deja registrado qué entregó, cuánto cobra en tBNB y un resumen. Esa información viaja automáticamente hacia quien paga.",
       handles: { target: false, source: true },
     },
   },
   {
-    id: "a2a-payment",
+    id: "a2a-alicia",
     type: "workflowScenario",
     position: { x: 290, y: 100 },
     data: {
-      title: "Liquidación tBNB",
+      title: "Alicia y la persona usuaria",
       description:
-        "Pago automatizado entre agentes, en segundos y sin intervenir manualmente en cada paso.",
+        "Quien administra la tesorería revisa el pedido y arma la liquidación. La persona usuaria ve un aviso en pantalla y debe confirmar antes de que se mueva el dinero.",
       handles: { target: true, source: true },
     },
   },
   {
-    id: "a2a-agent-dev",
+    id: "a2a-chain",
     type: "workflowScenario",
     position: { x: 590, y: 100 },
     data: {
-      title: "Agente desarrollo",
-      description: "Recibe compensación por la landing.",
+      title: "Pago en la red de prueba",
+      description:
+        "Solo después de que la persona usuaria confirme, el pago queda registrado en la red de prueba y puede verse en el explorador público. En esta demo todo sale de una misma cuenta para simplificar.",
       handles: { target: true, source: false },
     },
   },
 ];
 
 const A2A_EDGES: RFEdge[] = [
-  { id: "a2a-e1", source: "a2a-agent-design", target: "a2a-payment", type: "animated" },
-  { id: "a2a-e2", source: "a2a-payment", target: "a2a-agent-dev", type: "animated" },
+  { id: "a2a-e1", source: "a2a-juan", target: "a2a-alicia", type: "animated" },
+  { id: "a2a-e2", source: "a2a-alicia", target: "a2a-chain", type: "animated" },
 ];
 
 const A2B_NODES: RFNode[] = [
   {
-    id: "a2b-store",
+    id: "a2b-api",
     type: "workflowScenario",
     position: { x: 0, y: 100 },
     data: {
-      title: "Agente tienda ML",
-      description: "Monitorea stock y dispara reposición.",
+      title: "El agente del negocio",
+      description:
+        "Atiende el pedido del equipo: por ejemplo stock bajo, compra a proveedor o pago recurrente. En la app está dedicado a pagos de negocio a negocio.",
       handles: { target: false, source: true },
     },
   },
   {
-    id: "a2b-buy",
+    id: "a2b-tools",
     type: "workflowScenario",
     position: { x: 290, y: 100 },
     data: {
-      title: "Orden proveedor AR",
-      description: "Contrato/recurrencia ejecutada sin abrir home banking.",
+      title: "Revisión y envío",
+      description:
+        "Puede consultar cuánto hay disponible en la tesorería y, si alcanza, enviar el tBNB acordado al proveedor, respetando los montos mínimos de la demo.",
       handles: { target: true, source: true },
     },
   },
@@ -120,16 +124,17 @@ const A2B_NODES: RFNode[] = [
     type: "workflowScenario",
     position: { x: 590, y: 100 },
     data: {
-      title: "Proveedor (tBNB)",
-      description: "Liquida estable on-chain mediante la tesorería autónoma del agente.",
+      title: "Proveedor",
+      description:
+        "Recibe el pago en moneda de prueba (tBNB) en la red opBNB. El costo de la operación sale de la misma cuenta que envía el valor.",
       handles: { target: true, source: false },
     },
   },
 ];
 
 const A2B_EDGES: RFEdge[] = [
-  { id: "a2b-e1", source: "a2b-store", target: "a2b-buy", type: "animated" },
-  { id: "a2b-e2", source: "a2b-buy", target: "a2b-supplier", type: "animated" },
+  { id: "a2b-e1", source: "a2b-api", target: "a2b-tools", type: "animated" },
+  { id: "a2b-e2", source: "a2b-tools", target: "a2b-supplier", type: "animated" },
 ];
 
 const A2C_NODES: RFNode[] = [
@@ -138,8 +143,9 @@ const A2C_NODES: RFNode[] = [
     type: "workflowScenario",
     position: { x: 40, y: 150 },
     data: {
-      title: "Ingreso freelance",
-      description: "Cobro desde plataforma hacia la custodia configurada.",
+      title: "Llega el dinero",
+      description:
+        "La persona cuenta qué ingresó (sueldo, remesa, etc.) y a qué necesidades quiere destinarlo.",
       handles: { target: false, source: true },
     },
   },
@@ -148,8 +154,9 @@ const A2C_NODES: RFNode[] = [
     type: "workflowScenario",
     position: { x: 290, y: 150 },
     data: {
-      title: "Agente personal",
-      description: "Distribuye remesas, salud y cuota familiar.",
+      title: "El agente personal",
+      description:
+        "Organiza el reparto: puede mirar saldos y enviar varias partes del ingreso a distintas cuentas que la persona definió (salud, familia, servicios).",
       handles: { target: true, source: true },
     },
   },
@@ -158,8 +165,9 @@ const A2C_NODES: RFNode[] = [
     type: "workflowScenario",
     position: { x: 570, y: 0 },
     data: {
-      title: "Salud / consultas",
-      description: "Reserva gastos médicos recurrentes.",
+      title: "Salud",
+      description:
+        "Una parte puede ir a mutual, medicina prepaga o gastos médicos recurrentes.",
       handles: { target: true, source: false },
     },
   },
@@ -168,8 +176,9 @@ const A2C_NODES: RFNode[] = [
     type: "workflowScenario",
     position: { x: 570, y: 150 },
     data: {
-      title: "Cuentas hijos",
-      description: "Mandatos hacia subsidios del interior.",
+      title: "Hogar o hijos",
+      description:
+        "Otra parte puede destinarse a cuentas familiares, hijos o apoyo en el interior.",
       handles: { target: true, source: false },
     },
   },
@@ -178,8 +187,9 @@ const A2C_NODES: RFNode[] = [
     type: "workflowScenario",
     position: { x: 570, y: 300 },
     data: {
-      title: "Servicios e impuestos",
-      description: "Luz, SaaS y obligaciones donde aplique.",
+      title: "Servicios",
+      description:
+        "Suscripciones, luz, internet u otros pagos habituales, cada uno como un envío aparte si hace falta.",
       handles: { target: true, source: false },
     },
   },
@@ -233,10 +243,10 @@ function WorkflowFlowInner({ scenario }: { scenario: DemoScenario }) {
 
   const chatLabel =
     scenario === "a2a"
-      ? "chat A2A"
+      ? "ejemplo entre dos agentes"
       : scenario === "a2b"
-        ? "chat A2B"
-        : "chat A2C";
+        ? "ejemplo negocio y proveedor"
+        : "ejemplo de reparto personal";
 
   return (
     <Canvas
@@ -261,7 +271,7 @@ function WorkflowFlowInner({ scenario }: { scenario: DemoScenario }) {
           href={chatHref}
           className="inline-flex px-3 py-2 text-[13px] font-medium text-[#f4f6fa] underline-offset-4 hover:underline hover:decoration-[#f0b90b]/85"
         >
-          Abrir {chatLabel}
+          Ir a {chatLabel}
         </Link>
       </Panel>
     </Canvas>

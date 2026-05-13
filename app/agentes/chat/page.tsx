@@ -8,7 +8,6 @@ export default function AgentesChatPage() {
       api="/api/agents/execute"
       title="Chat agente · tBNB testnet"
       emptyState={{ title: "Sin mensajes" }}
-      textareaPlaceholder="Ej.: consultá mi balance tBNB…"
     />
   );
 }
