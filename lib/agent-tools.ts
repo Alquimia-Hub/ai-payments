@@ -3,6 +3,7 @@ import { formatEther, getAddress, isAddress, parseEther } from "viem";
 import { z } from "zod";
 
 import {
+  exploreAddressUrl,
   exploreTxUrl,
   getAgentAccount,
   getAgentPrivateKeyFormatHint,
@@ -87,6 +88,7 @@ export function createAgentTools(lockedFlow?: AgentFlowLock) {
           balanceWei: wei.toString(),
           balanceHuman: formatEther(wei),
           chainId: OPBNB_TESTNET_CHAIN_ID,
+          explorerUrl: exploreAddressUrl(owner, OPBNB_TESTNET_CHAIN_ID),
         };
       },
     }),

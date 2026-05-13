@@ -7,7 +7,8 @@
 - **`/`** redirige a **`/wallet`** (no hay dashboard home).
 - **Wallet (`/wallet`)**: vista **wagmi** para conectar billetera y operar contra la cadena donde esté configurada la demo (ej. red de prueba), **fuera del flujo de chat con herramientas servidor**.
 - **Chat tBNB (`/agentes/chat`)**: mismo agente que `POST /api/agents/execute` **sin** `scenario` en el cuerpo: el modelo elige clasificación **A2A | A2B | A2C** libremente en cada `sendTBnb` (on-chain cuando hay clave).
-- **Escenarios narrativos (`/agentes/a2a`, `/agentes/a2b`, `/agentes/a2c`)**: también usan `POST /api/agents/execute` enviando `scenario` en el body junto con `messages`; el servidor **bloquea** ese flow y fuerza herramientas reales (**misma lógica de lock que el mock anterior**). Las transferencias son **tBNB nativas** en opBNB testnet.
+- **Escenarios narrativos (`/agentes/a2b`, `/agentes/a2c`)**: `POST /api/agents/execute` con **`scenario`** y **`messages`**; el servidor fuerza herramientas reales **`createAgentTools(locked)`** sobre opBNB testnet.
+- **`/agentes/a2a` (dual Alicia + Juan)**: mismo endpoint con **`scenario: "a2a"`** y **`a2aRole`** (`"alicia"` **|** `"juan"`). Alicia usa la tesorería `AGENT_WALLET_PRIVATE_KEY`; Juan solo herramientas JSON simuladas. La demo liquida con **`sendSettlementTBnb`** (micro‑autotransferencia) para seguir teniendo vistas en **[testnet.opbnbscan.com](https://testnet.opbnbscan.com)** con **una sola wallet**. Opcional **`A2A_MAX_DEMO_TBNB`** (humano decimal, defecto **`0.0005`**; ver [`lib/a2a-dual-config.ts`](lib/a2a-dual-config.ts)) + **`AGENT_TBNB_MAX_PER_TX`** (también aplica a settlement).
 - **Workflows (`/workflows/a2a`, …; `/workflows` redirige a A2A)**: diagramas estáticos (React Flow + AI Elements) que **solo ilustran** la misma tríada A2A/A2B/A2C y enlazan al chat correspondiente.
 
 ### Endpoint mock (opcional para integraciones sin fondos)
@@ -28,11 +29,15 @@
 
 | Rutas típicas | Rol del modelo | Efecto on-chain |
 | ------------- | ------------- | ---------------- |
-| `/agentes/a2a,b,c` → `POST /api/agents/execute` + `scenario` | Flow **bloqueado** por página | **Real** (`createAgentTools(lockedFlow)`) |
+| `/agentes/a2b`, `/agentes/a2c` → `POST /api/agents/execute` + `scenario` | Flow **bloqueado** | **Real** (`createAgentTools(lockedFlow)`) |
+| `/agentes/a2a` → `scenario` + `a2aRole` | Alicia / Juan herramientas dual | **Real** simulaciones + **`sendSettlementTBnb`** (`createA2aDualTools(role)`) |
+| `POST .../execute` + `scenario: "a2a"` **sin** `a2aRole` | A2A legacy | **Real** `sendTBnb`/`checkTBnbBalance` (`createAgentTools("A2A")`) |
 | `/agentes/chat` → `POST /api/agents/execute` (sin `scenario`) | Cualquier flow A2A/A2B/A2C válido por pedido del usuario | **Real** (`createAgentTools()`) |
 | Cualquier cliente → `POST /api/agents/demo` | Flow bloqueado por `scenario` | **Simulación** (`agent-tools-mock`) |
 
-Para probar rápido con clave servidor: **`/agentes/chat`** → pedir balance con **`checkTBnbBalance`** sin argumentos → un **`sendTBnb`** pequeño con dirección válida en testnet. En **`/agentes/a2a`** (etc.) el mismo flujo debe usar **`flow: "A2A"`** sí o sí.
+Para probar rápido con clave servidor: **`/agentes/chat`** → pedir balance con **`checkTBnbBalance`** sin argumentos → un **`sendTBnb`** pequeño con dirección válida en testnet.
+
+En **`/agentes/a2b`** y **`/agentes/a2c`**, el mismo flujo legacy debe usar el **`flow`** correcto (**`A2B`**, **`A2C`**) al llamar `sendTBnb`. En **`/agentes/a2a`** el dual‑chat usa herramientas específicas (p. ej. **`sendSettlementTBnb`**) en lugar del `sendTBnb` genérico de escenario cuando `a2aRole` viene en el cuerpo; los clientes que llamen sólo **`scenario: "a2a"`** sin **`a2aRole`** siguen recibiendo el set clásico `checkTBnbBalance` + **`sendTBnb`** con **`flow: "A2A"`**.
 
 ### Escenarios (semántica de negocio)
 

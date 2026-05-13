@@ -20,6 +20,13 @@ export function WalletPanel() {
   const { disconnect } = useDisconnect();
   const { switchChainAsync, isPending: switching } = useSwitchChain();
   const [copied, setCopied] = React.useState(false);
+  /** Evita hydration mismatch: en SSR wagmi aparece desconectado; en cliente puede hidratar ya reconectado. */
+  const [hasMounted, setHasMounted] = React.useState(false);
+  React.useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  const showAccountUi = hasMounted && isConnected;
 
   const short =
     address && `${address.slice(0, 6)}…${address.slice(address.length - 4)}`;
@@ -63,7 +70,7 @@ export function WalletPanel() {
         </div>
 
         <div className="space-y-8 px-5 py-6 sm:px-6 sm:py-8">
-          {!isConnected ? (
+          {!showAccountUi ? (
             <section className="space-y-3" aria-labelledby="wallet-connect-heading">
               <div className="flex items-center gap-2 text-[#aab3c5]">
                 <Layers className="size-4 text-[#f0b90b]/80" aria-hidden />
@@ -180,7 +187,7 @@ export function WalletPanel() {
                     ? "bg-[#f0b90b] text-[#0c0e12] shadow-md hover:bg-[#fcd535]"
                     : "border-[#394355] bg-[#151b27] text-[#e8edf5] hover:border-[#f0b90b]/30 hover:bg-[#1c2535]",
                 )}
-                disabled={!isConnected || switching}
+                disabled={!showAccountUi || switching}
                 onClick={() => switchChainAsync({ chainId: opBNBMainnet.id })}
               >
                 Mainnet
@@ -198,7 +205,7 @@ export function WalletPanel() {
                     ? "bg-[#f0b90b] text-[#0c0e12] shadow-md hover:bg-[#fcd535]"
                     : "border-[#394355] bg-[#151b27] text-[#e8edf5] hover:border-[#f0b90b]/30 hover:bg-[#1c2535]",
                 )}
-                disabled={!isConnected || switching}
+                disabled={!showAccountUi || switching}
                 onClick={() => switchChainAsync({ chainId: opBNBTestnet.id })}
               >
                 Testnet

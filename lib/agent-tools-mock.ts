@@ -13,7 +13,7 @@ import {
 } from "viem";
 import { z } from "zod";
 
-import { exploreTxUrl, opBNBTestnet, OPBNB_TESTNET_CHAIN_ID } from "@/lib/opbnb";
+import { exploreAddressUrl, exploreTxUrl, opBNBTestnet, OPBNB_TESTNET_CHAIN_ID } from "@/lib/opbnb";
 
 /** Wallet ficticia cuando no hay `address` (demo sin clave servidor). */
 const MOCK_AGENT_PAYER = getAddress(
@@ -73,6 +73,7 @@ export function createMockAgentTools(lockedFlow: "A2A" | "A2B" | "A2C") {
           balanceWei: wei.toString(),
           balanceHuman: formatEther(wei),
           chainId: OPBNB_TESTNET_CHAIN_ID,
+          explorerUrl: exploreAddressUrl(owner, OPBNB_TESTNET_CHAIN_ID),
           simulatedDemo: true as const,
         };
       },

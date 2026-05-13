@@ -11,6 +11,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
@@ -34,7 +41,12 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Streamdown, type ExtraProps } from "streamdown";
+import type {
+  ExtraProps,
+  LinkSafetyModalProps,
+  StreamdownTranslations,
+} from "streamdown";
+import { Streamdown, defaultTranslations } from "streamdown";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -325,9 +337,108 @@ export const MessageBranchPage = ({
   );
 };
 
+const streamdownPlugins = { cjk, code, math, mermaid };
+
+const STREAMDOWN_TRANSLATIONS_ES = {
+  ...defaultTranslations,
+  close: "Cerrar",
+  copied: "Copiado",
+  copyCode: "Copiar código",
+  copyLink: "Copiar enlace",
+  copyTable: "Copiar tabla",
+  copyTableAsCsv: "Copiar tabla como CSV",
+  copyTableAsMarkdown: "Copiar tabla como Markdown",
+  copyTableAsTsv: "Copiar tabla como TSV",
+  downloadDiagram: "Descargar diagrama",
+  downloadDiagramAsMmd: "Descargar como .mmd",
+  downloadDiagramAsPng: "Descargar PNG",
+  downloadDiagramAsSvg: "Descargar SVG",
+  downloadFile: "Descargar archivo",
+  downloadImage: "Descargar imagen",
+  downloadTable: "Descargar tabla",
+  downloadTableAsCsv: "Descargar CSV",
+  downloadTableAsMarkdown: "Descargar Markdown",
+  exitFullscreen: "Salir de pantalla completa",
+  externalLinkWarning:
+    "Vas a abrir una página fuera de este chat. Confirmá que el destino coincida con lo que esperás antes de seguir.",
+  imageNotAvailable: "Imagen no disponible",
+  mermaidFormatMmd: ".mmd",
+  mermaidFormatPng: "PNG",
+  mermaidFormatSvg: "SVG",
+  openExternalLink: "Enlace externo",
+  openLink: "Abrir",
+  tableFormatCsv: "CSV",
+  tableFormatMarkdown: "Markdown",
+  tableFormatTsv: "TSV",
+  viewFullscreen: "Pantalla completa",
+} satisfies StreamdownTranslations;
+
+function StreamdownExternalLinkModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  url,
+}: LinkSafetyModalProps) {
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <DialogContent
+        showCloseButton
+        className={cn(
+          "w-[min(20rem,calc(100vw-2rem))] max-w-none gap-0 rounded-[var(--sidebar-frame-radius,0.75rem)]",
+          "border border-[#2a3344] bg-[#11161f] p-6 text-[#e8edf5]",
+          "shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_48px_-28px_rgba(0,0,0,0.65)] ring-1 ring-[#f0b90b]/[0.08]",
+        )}
+      >
+        <DialogHeader className="gap-3 text-left">
+          <DialogTitle className="text-base font-semibold tracking-tight text-[#f4f6fa]">
+            Vas a otro sitio
+          </DialogTitle>
+          <p className="text-[13px] leading-relaxed text-[#aab3c5]">
+            El vínculo abre contenido fuera de esta aplicación. Revísalo con cuidado.
+          </p>
+          <div
+            translate="no"
+            className="break-all rounded-lg border border-[#272b36] bg-[#0c1018] px-3 py-2.5 font-mono text-[12px] leading-snug text-[#fcd535]"
+          >
+            {url}
+          </div>
+        </DialogHeader>
+        <DialogFooter className="mt-6 flex-row flex-wrap gap-2 border-0 bg-transparent px-0 sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            className="min-w-[7rem] border-[#394355] bg-[#151b27] text-[#e8edf5] hover:bg-[#1c2535]"
+            onClick={() => onClose()}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            className="min-w-[7rem] bg-[#f0b90b] text-[#0c0e12] hover:bg-[#fcd535]"
+            onClick={() => void onConfirm()}
+          >
+            Abrir
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const STREAMDOWN_LINK_SAFETY_ES = {
+  enabled: true,
+  renderModal: (props: LinkSafetyModalProps) => (
+    <StreamdownExternalLinkModal {...props} />
+  ),
+};
+
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
-const streamdownPlugins = { cjk, code, math, mermaid };
 
 /**
  * Markdown envuelve el texto suelto en `<p>`. Enlaces Streamdown pueden abrir overlays
@@ -360,6 +471,8 @@ export const MessageResponse = memo(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className,
       )}
+      translations={STREAMDOWN_TRANSLATIONS_ES}
+      linkSafety={STREAMDOWN_LINK_SAFETY_ES}
       plugins={streamdownPlugins}
       components={{
         p: MarkdownParagraphAsDiv,

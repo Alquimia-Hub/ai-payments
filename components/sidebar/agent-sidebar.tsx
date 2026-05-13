@@ -254,14 +254,14 @@ export function AgentSidebar({
           >
             <SidebarLink
               href="/agentes/chat"
-              label="Chat · tBNB (agente)"
+              label="Chat"
               icon={MessageSquare}
               exact
               onNavigate={onNavigate}
             />
             <SidebarLink
-              href="/agentes/a2a"
-              label="A2A – Agent to Agent"
+              href="/agentes/a2c"
+              label="A2C – Agent to Consumer"
               icon={Bot}
               onNavigate={onNavigate}
             />
@@ -272,8 +272,8 @@ export function AgentSidebar({
               onNavigate={onNavigate}
             />
             <SidebarLink
-              href="/agentes/a2c"
-              label="A2C – Agent to Consumer"
+              href="/agentes/a2a"
+              label="A2A – Agent to Agent"
               icon={Bot}
               onNavigate={onNavigate}
             />

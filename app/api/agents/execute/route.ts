@@ -6,6 +6,8 @@ import {
   stepCountIs,
 } from "ai";
 
+import { getA2aDualRoleSystemPrompt, isA2aDualRole } from "@/lib/a2a-dual-prompts";
+import { createA2aDualTools } from "@/lib/a2a-dual-tools";
 import { createAgentTools } from "@/lib/agent-tools";
 import {
   type DemoScenario,
@@ -74,16 +76,36 @@ export async function POST(req: Request) {
     return Response.json(
       {
         error:
-          "Se espera cuerpo { messages: UIMessage[], scenario?: 'a2a'|'a2b'|'a2c' }.",
+          "Se espera cuerpo { messages: UIMessage[], scenario?: 'a2a'|'a2b'|'a2c', a2aRole?: 'alicia'|'juan' } (a2aRole solo si scenario=a2a).",
       },
       { status: 412 },
     );
   }
 
   const scenarioRaw = (parsed as { scenario?: unknown }).scenario;
+  const a2aRoleRaw = (parsed as { a2aRole?: unknown }).a2aRole;
+
   if (scenarioRaw !== undefined && !isDemoScenario(scenarioRaw)) {
     return Response.json(
       { error: "scenario debe ser 'a2a', 'a2b' o 'a2c' si se envía." },
+      { status: 412 },
+    );
+  }
+  if (
+    a2aRoleRaw !== undefined &&
+    scenarioRaw !== "a2a"
+  ) {
+    return Response.json(
+      { error: "a2aRole solo tiene sentido con scenario igual a 'a2a'." },
+      { status: 412 },
+    );
+  }
+  if (
+    a2aRoleRaw !== undefined &&
+    !isA2aDualRole(a2aRoleRaw)
+  ) {
+    return Response.json(
+      { error: "a2aRole debe ser 'alicia' o 'juan'." },
       { status: 412 },
     );
   }
@@ -98,11 +120,20 @@ export async function POST(req: Request) {
 
   const lockedFlow =
     scenarioRaw !== undefined ? scenarioToLockedFlow(scenarioRaw) : undefined;
-  const tools = createAgentTools(lockedFlow);
+  const a2aDualRole =
+    scenarioRaw === "a2a" && isA2aDualRole(a2aRoleRaw) ? a2aRoleRaw : undefined;
+
+  const tools =
+    a2aDualRole !== undefined
+      ? createA2aDualTools(a2aDualRole)
+      : createAgentTools(lockedFlow);
+
   const system =
-    lockedFlow === undefined
-      ? AGENT_SYSTEM_BASE
-      : `${AGENT_SYSTEM_BASE}\n\n---\n\n${getScenarioSystemPrompt(lockedFlow)}`;
+    a2aDualRole !== undefined
+      ? `${AGENT_SYSTEM_BASE}\n\n---\n\n${getScenarioSystemPrompt("A2A")}\n\n---\n\n${getA2aDualRoleSystemPrompt(a2aDualRole)}`
+      : lockedFlow === undefined
+        ? AGENT_SYSTEM_BASE
+        : `${AGENT_SYSTEM_BASE}\n\n---\n\n${getScenarioSystemPrompt(lockedFlow)}`;
 
   try {
     const provider = createOpenAI({ apiKey });

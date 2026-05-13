@@ -3,10 +3,6 @@
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
-  getToolName,
-  isReasoningUIPart,
-  isTextUIPart,
-  isToolUIPart,
   type UIMessage,
 } from "ai";
 import { MessageSquare } from "lucide-react";
@@ -22,7 +18,6 @@ import {
 import {
   Message,
   MessageContent,
-  MessageResponse,
 } from "@/components/ai-elements/message";
 import {
   PromptInput,
@@ -33,6 +28,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import {
+  AssistantPartRenderer,
+  trailingTextPartIndex,
+} from "@/app/agentes/_components/agent-chat-message-parts";
 import type { DemoScenario } from "@/lib/agent-demo-prompts";
 
 export type SuggestionChip = {
@@ -52,81 +51,6 @@ export type AgentPaymentsChatProps = {
   textareaPlaceholder?: string;
   suggestions?: SuggestionChip[];
 };
-
-function trailingTextPartIndex(parts: UIMessage["parts"]): number {
-  const list = parts ?? [];
-  for (let i = list.length - 1; i >= 0; i -= 1) {
-    if (list[i]?.type === "text") return i;
-  }
-  return -1;
-}
-
-function renderAssistantPart(
-  part: UIMessage["parts"][number],
-  idx: number,
-  animateText: boolean,
-) {
-  const key = `p-${idx}`;
-
-  if (isTextUIPart(part)) {
-    return (
-      <MessageResponse key={key} isAnimating={animateText}>
-        {part.text}
-      </MessageResponse>
-    );
-  }
-
-  if (isReasoningUIPart(part)) {
-    return (
-      <div
-        key={key}
-        className="rounded-md border border-dashed border-border/80 bg-muted/40 px-2 py-1.5 text-xs italic leading-relaxed text-muted-foreground"
-      >
-        {part.text ?? "(sin texto de reasoning)"}
-      </div>
-    );
-  }
-
-  if (isToolUIPart(part)) {
-    const title = getToolName(part);
-
-    let body: string;
-    if (part.state === "output-available") {
-      body = JSON.stringify(part.output, null, 2);
-    } else if (part.state === "output-error") {
-      body = part.errorText;
-    } else if (part.state === "input-available") {
-      body = `Entrada lista:\n${JSON.stringify(part.input, null, 2)}`;
-    } else if (part.state === "input-streaming") {
-      body = "Entrada en streaming…";
-    } else {
-      body = `Estado: ${part.state}`;
-    }
-
-    return (
-      <div
-        key={key}
-        className="rounded-lg border border-border/80 bg-secondary/55 px-3 py-2 font-mono text-xs text-muted-foreground shadow-inner"
-      >
-        <p className="mb-1.5 font-sans text-xs font-semibold uppercase tracking-wide text-[#f0b90b]/90">
-          {title}
-        </p>
-        <pre className="max-h-52 overflow-auto whitespace-pre-wrap text-[11px] leading-snug">
-          {body}
-        </pre>
-      </div>
-    );
-  }
-
-  return (
-    <pre
-      key={key}
-      className="max-w-full overflow-x-auto rounded-md border border-border bg-muted p-2 text-[11px]"
-    >
-      {JSON.stringify(part, null, 2)}
-    </pre>
-  );
-}
 
 /** Shell de chat AI Elements (`Conversation` + `PromptInput`): patrón de elements.ai-sdk.dev + transport Vercel. */
 export function AgentPaymentsChat({
@@ -251,19 +175,20 @@ export function AgentPaymentsChat({
                               ));
                           }
                           const tailIdx = trailingTextPartIndex(parts);
-                          return parts.map((part, i) =>
-                            renderAssistantPart(
-                              part,
-                              i,
-                              Boolean(
+                          return parts.map((part, i) => (
+                            <AssistantPartRenderer
+                              key={`p-${i}`}
+                              part={part}
+                              idx={i}
+                              animateText={Boolean(
                                 isGenerating &&
                                   message.role === "assistant" &&
                                   message.id === streamingAssistantId &&
                                   i === tailIdx &&
-                                  isTextUIPart(part),
-                              ),
-                            ),
-                          );
+                                  part.type === "text",
+                              )}
+                            />
+                          ));
                         })()}
                       </MessageContent>
                     </Message>

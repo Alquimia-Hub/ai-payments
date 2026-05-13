@@ -193,3 +193,23 @@ export function exploreTxUrl(
       : "https://opbnbscan.com";
   return `${base}/tx/${txHash}`;
 }
+
+/**
+ * Link a cuenta en el explorador (saldo nativo y transacciones).
+ * `NEXT_PUBLIC_EXPLORER_ADDRESS_URL_TEMPLATE` puede incluir `{{address}}` o `%s`.
+ */
+export function exploreAddressUrl(
+  address: `0x${string}`,
+  chainId: number = opBNBMainnet.id,
+): string {
+  const tpl = process.env.NEXT_PUBLIC_EXPLORER_ADDRESS_URL_TEMPLATE;
+  if (tpl?.length) {
+    return tpl.replaceAll("{{address}}", address).replaceAll("%s", address);
+  }
+  const base =
+    chainId === opBNBTestnet.id
+      ? "https://testnet.opbnbscan.com"
+      : "https://opbnbscan.com";
+  return `${base}/address/${address}`;
+}
+
